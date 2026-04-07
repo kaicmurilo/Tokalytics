@@ -1,5 +1,8 @@
 node_modules/
+CLAUDE.md
+.cursor-context.md
 .env
 .DS_Store
 *.log
 .vercel
+.cursor/

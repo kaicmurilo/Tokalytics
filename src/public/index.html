@@ -1828,7 +1828,7 @@ async function generateShareCard() {
   ctx.fillStyle = '#475569';
   ctx.font = '500 14px Inter, system-ui';
   ctx.textAlign = 'right';
-  ctx.fillText('npx claude-spend', W - 60, footerY);
+  ctx.fillText('npx Tokalytics', W - 60, footerY);
   ctx.textAlign = 'left';
 
   // Show overlay
@@ -1838,7 +1838,7 @@ async function generateShareCard() {
 function downloadShareCard() {
   const canvas = document.getElementById('shareCanvas');
   const link = document.createElement('a');
-  link.download = 'claude-spend-stats.png';
+  link.download = 'Tokalytics-stats.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
