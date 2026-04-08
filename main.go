@@ -147,6 +147,75 @@ func readClaudeMCPs(home string) []string {
 	return names
 }
 
+func readClaudeSkills(home string) []string {
+	path := filepath.Join(home, ".claude", "plugins", "installed_plugins.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	var cfg struct {
+		Plugins map[string][]struct {
+			InstallPath string `json:"installPath"`
+		} `json:"plugins"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return []string{}
+	}
+	seen := map[string]struct{}{}
+	for _, installs := range cfg.Plugins {
+		for _, inst := range installs {
+			skillsDir := filepath.Join(inst.InstallPath, "skills")
+			entries, err := os.ReadDir(skillsDir)
+			if err != nil {
+				continue
+			}
+			for _, e := range entries {
+				if e.IsDir() {
+					seen[e.Name()] = struct{}{}
+				}
+			}
+		}
+	}
+	names := make([]string, 0, len(seen))
+	for k := range seen {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readCursorSkills(home string) []string {
+	dir := filepath.Join(home, ".cursor", "skills")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []string{}
+	}
+	names := []string{}
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readGeminiSkills(home string) []string {
+	dir := filepath.Join(home, ".gemini", "skills")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []string{}
+	}
+	names := []string{}
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
 func readCursorMCPs(home string) []string {
 	path := filepath.Join(home, ".cursor", "mcp.json")
 	data, err := os.ReadFile(path)
@@ -311,14 +380,17 @@ func startHTTPServer() {
 			"claude": map[string]interface{}{
 				"plugins": readClaudePlugins(home),
 				"mcps":    readClaudeMCPs(home),
+				"skills":  readClaudeSkills(home),
 			},
 			"cursor": map[string]interface{}{
 				"plugins": []string{},
 				"mcps":    readCursorMCPs(home),
+				"skills":  readCursorSkills(home),
 			},
 			"gemini": map[string]interface{}{
 				"plugins": readGeminiExtensions(home),
 				"mcps":    []string{},
+				"skills":  readGeminiSkills(home),
 			},
 		}
 		json.NewEncoder(w).Encode(result)

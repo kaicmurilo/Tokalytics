@@ -1088,13 +1088,17 @@ async function loadPlugins() {
         ? items.map(p => `<span class="plugin-badge">${p}</span>`).join('')
         : '<span class="plugin-empty">Nenhum detectado</span>';
     }
+    function section(label, items, first) {
+      return `<div class="plugin-section-label"${first ? '' : ' style="margin-top:14px"'}>${label}</div>${badgeList(items)}`;
+    }
     el.innerHTML = tools.map(t => {
       const tool = data[t.key] || {};
-      const pluginsSection = (tool.plugins && tool.plugins.length) || !(tool.mcps && tool.mcps.length)
-        ? `<div class="plugin-section-label">Plugins</div>${badgeList(tool.plugins)}`
-        : '';
-      const mcpsSection = `<div class="plugin-section-label" style="margin-top:${pluginsSection ? '14px' : '0'}">MCPs</div>${badgeList(tool.mcps)}`;
-      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${t.label}</div>${pluginsSection}${mcpsSection}</div>`;
+      let parts = [];
+      if (tool.plugins && tool.plugins.length) parts.push(section('Plugins', tool.plugins, true));
+      if (tool.mcps && tool.mcps.length) parts.push(section('MCPs', tool.mcps, parts.length === 0));
+      if (tool.skills && tool.skills.length) parts.push(section('Skills', tool.skills, parts.length === 0));
+      if (parts.length === 0) parts.push('<span class="plugin-empty">Nenhum item detectado</span>');
+      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${t.label}</div>${parts.join('')}</div>`;
     }).join('');
   } catch(e) {
     document.getElementById('pluginsContent').innerHTML = '<span class="plugin-empty">Erro ao carregar plugins</span>';
