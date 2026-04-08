@@ -775,6 +775,7 @@
 .plugin-tool-title { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; }
 .plugin-badge { display:inline-block; background:#F5F3FF; border:1px solid #DDD6FE; color:#6D28D9; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:500; margin:3px; }
 .plugin-empty { color:var(--text-secondary); font-size:13px; font-style:italic; }
+.plugin-section-label { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -1082,12 +1083,18 @@ async function loadPlugins() {
       { key: 'cursor', label: 'Cursor' },
       { key: 'gemini', label: 'Gemini CLI' },
     ];
+    function badgeList(items) {
+      return items && items.length
+        ? items.map(p => `<span class="plugin-badge">${p}</span>`).join('')
+        : '<span class="plugin-empty">Nenhum detectado</span>';
+    }
     el.innerHTML = tools.map(t => {
-      const plugins = data[t.key] || [];
-      const badges = plugins.length
-        ? plugins.map(p => `<span class="plugin-badge">${p}</span>`).join('')
-        : '<span class="plugin-empty">Nenhum plugin detectado</span>';
-      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${t.label}</div>${badges}</div>`;
+      const tool = data[t.key] || {};
+      const pluginsSection = (tool.plugins && tool.plugins.length) || !(tool.mcps && tool.mcps.length)
+        ? `<div class="plugin-section-label">Plugins</div>${badgeList(tool.plugins)}`
+        : '';
+      const mcpsSection = `<div class="plugin-section-label" style="margin-top:${pluginsSection ? '14px' : '0'}">MCPs</div>${badgeList(tool.mcps)}`;
+      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${t.label}</div>${pluginsSection}${mcpsSection}</div>`;
     }).join('');
   } catch(e) {
     document.getElementById('pluginsContent').innerHTML = '<span class="plugin-empty">Erro ao carregar plugins</span>';

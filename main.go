@@ -127,6 +127,26 @@ func readClaudePlugins(home string) []string {
 	return names
 }
 
+func readClaudeMCPs(home string) []string {
+	path := filepath.Join(home, ".claude.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	var cfg struct {
+		McpServers map[string]interface{} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return []string{}
+	}
+	names := make([]string, 0, len(cfg.McpServers))
+	for k := range cfg.McpServers {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func readCursorMCPs(home string) []string {
 	path := filepath.Join(home, ".cursor", "mcp.json")
 	data, err := os.ReadFile(path)
@@ -288,9 +308,18 @@ func startHTTPServer() {
 			return
 		}
 		result := map[string]interface{}{
-			"claude": readClaudePlugins(home),
-			"cursor": readCursorMCPs(home),
-			"gemini": readGeminiExtensions(home),
+			"claude": map[string]interface{}{
+				"plugins": readClaudePlugins(home),
+				"mcps":    readClaudeMCPs(home),
+			},
+			"cursor": map[string]interface{}{
+				"plugins": []string{},
+				"mcps":    readCursorMCPs(home),
+			},
+			"gemini": map[string]interface{}{
+				"plugins": readGeminiExtensions(home),
+				"mcps":    []string{},
+			},
 		}
 		json.NewEncoder(w).Encode(result)
 	})
