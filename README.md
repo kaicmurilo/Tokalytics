@@ -41,6 +41,17 @@ npm run start    # compila e em seguida executa ./tokalytics
 
 Na primeira execução o app sobe o **servidor HTTP na porta `3456`** e o ícone na barra de menus. Use **«Abrir Dashboard»** no menu ou acesse [http://127.0.0.1:3456](http://127.0.0.1:3456).
 
+### Instalação global pelo npm
+
+Confira a versão no registry: `npm view tokalytics version`. Se estiver antiga (por exemplo só `2.0.0`), `npm install -g tokalytics` usa um `postinstall` desatualizado.
+
+- Depois de publicar a versão nova: `npm install -g tokalytics@latest` (ou `@2.0.3`).
+- **Sem esperar o registry**, instalando o pacote a partir do GitHub (usa o `postinstall` da `main`):
+
+```bash
+npm install -g "github:kaicmurilo/Tokalytics"
+```
+
 ## Dashboard
 
 Interface web em abas:
@@ -62,7 +73,7 @@ Com `NPM_TOKEN` configurado em **GitHub → Settings → Secrets** (token granul
 1. Commit e push das mudanças em `main`.
 2. Crie e envie a tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
 
-O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) gera os binários na release do GitHub (nomes esperados pelo `npm install`) e publica o pacote no npm.
+O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) gera os binários na release do GitHub (nomes esperados pelo `npm install`) e publica o pacote no npm. Se o job **Publish to npm** falhar (token/2FA), o registry fica desatualizado mesmo com releases no GitHub — publique manualmente: `npm publish --access public` (com OTP se necessário).
 
 ## Licença
 

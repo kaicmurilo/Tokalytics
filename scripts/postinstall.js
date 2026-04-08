@@ -4,7 +4,15 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+
+const pkgPath = path.join(__dirname, '..', 'package.json');
+const pkgVersion = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version || '?';
+  } catch {
+    return '?';
+  }
+})();
 
 // Repositório público no GitHub (nome real: Tokalytics)
 const REPO = 'kaicmurilo/Tokalytics';
@@ -49,8 +57,24 @@ function fetchJson(url, extraHeaders = {}) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error('Resposta inválida da API do GitHub')); }
+        if (res.statusCode && res.statusCode >= 400) {
+          try {
+            const j = JSON.parse(data);
+            if (j && j.message) {
+              return reject(
+                new Error(`GitHub HTTP ${res.statusCode}: ${j.message}`)
+              );
+            }
+          } catch (_) {
+            /* fallthrough */
+          }
+          return reject(new Error(`GitHub HTTP ${res.statusCode}`));
+        }
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          reject(new Error('Resposta inválida da API do GitHub'));
+        }
       });
     }).on('error', reject);
   });
@@ -104,14 +128,15 @@ function assertReleasePayload(release) {
 }
 
 async function install() {
-  console.log('Tokalytics: buscando última versão...');
+  console.log(`Tokalytics installer v${pkgVersion}: buscando última versão...`);
 
   const release = await fetchJson(`https://api.github.com/repos/${REPO}/releases/latest`);
   assertReleasePayload(release);
   const version = release.tag_name;
   const binaryName = getPlatformBinary();
 
-  const asset = release.assets.find((a) => a.name === binaryName);
+  const assets = Array.isArray(release.assets) ? release.assets : [];
+  const asset = assets.find((a) => a && a.name === binaryName);
   if (!asset) {
     throw new Error(`Binário "${binaryName}" não encontrado na release ${version}`);
   }
