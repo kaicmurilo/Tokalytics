@@ -214,12 +214,7 @@ func startHTTPServer() {
 			"topPrompts":       agg.TopPrompts,
 			"totals":           agg.Totals,
 			"insights":         agg.Insights,
-			"warnings": []map[string]interface{}{
-				{
-					"type":    "info",
-					"message": "Dados de provedores atualizados em tempo real.",
-				},
-			},
+			"warnings": []map[string]interface{}{},
 		}
 		json.NewEncoder(w).Encode(data)
 	})

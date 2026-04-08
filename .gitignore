@@ -6,3 +6,4 @@ CLAUDE.md
 *.log
 .vercel
 .cursor/
+AGENTS.MD
