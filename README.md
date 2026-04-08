@@ -55,6 +55,15 @@ Interface web em abas:
 
 Há atalhos para **atualizar dados**, **compartilhar stats** (PNG) e **configurações** (cookies opcionais para APIs em nuvem).
 
+## Release (mantenedores)
+
+Com `NPM_TOKEN` configurado em **GitHub → Settings → Secrets** (token granular com permissão de publish):
+
+1. Commit e push das mudanças em `main`.
+2. Crie e envie a tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+O workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) gera os binários na release do GitHub (nomes esperados pelo `npm install`) e publica o pacote no npm.
+
 ## Licença
 
 MIT

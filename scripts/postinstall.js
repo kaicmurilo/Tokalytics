@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const REPO = 'kaicmurilo/tokalytics';
+// Repositório público no GitHub (nome real: Tokalytics)
+const REPO = 'kaicmurilo/Tokalytics';
 const BIN_DIR = path.join(__dirname, '..', 'bin');
 const BIN_PATH = path.join(BIN_DIR, process.platform === 'win32' ? 'tokalytics.exe' : 'tokalytics');
 
@@ -30,9 +31,17 @@ function getPlatformBinary() {
   return name;
 }
 
-function fetchJson(url) {
+function fetchJson(url, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
-    const options = { headers: { 'User-Agent': 'tokalytics-installer' } };
+    const headers = {
+      'User-Agent': 'tokalytics-installer',
+      Accept: 'application/vnd.github+json',
+      ...extraHeaders,
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+    const options = { headers };
     https.get(url, options, (res) => {
       if (res.statusCode === 302 || res.statusCode === 301) {
         return fetchJson(res.headers.location).then(resolve).catch(reject);
@@ -70,10 +79,35 @@ function downloadFile(url, dest) {
   });
 }
 
+function assertReleasePayload(release) {
+  if (!release || typeof release !== 'object') {
+    throw new Error('Resposta inválida da API do GitHub (corpo vazio).');
+  }
+  if (release.message && !release.tag_name) {
+    let hint = '';
+    if (/rate limit/i.test(release.message) && !process.env.GITHUB_TOKEN) {
+      hint = ' Defina GITHUB_TOKEN no ambiente para aumentar o limite.';
+    } else if (/not found/i.test(release.message)) {
+      hint =
+        ` Confirme que https://github.com/${REPO} existe, é público e tem pelo menos uma release com binários anexados.`;
+    }
+    throw new Error(`GitHub: ${release.message}${hint}`);
+  }
+  if (!release.tag_name) {
+    throw new Error('Release sem tag_name; verifique se existe release no repositório.');
+  }
+  if (!Array.isArray(release.assets)) {
+    throw new Error(
+      'Resposta da API sem lista de assets. Possível rate limit ou repositório/release inexistente.'
+    );
+  }
+}
+
 async function install() {
   console.log('Tokalytics: buscando última versão...');
 
   const release = await fetchJson(`https://api.github.com/repos/${REPO}/releases/latest`);
+  assertReleasePayload(release);
   const version = release.tag_name;
   const binaryName = getPlatformBinary();
 

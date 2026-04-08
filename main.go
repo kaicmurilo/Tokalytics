@@ -21,6 +21,9 @@ import (
 //go:embed web/static/*
 var staticFiles embed.FS
 
+// Version é definida em releases via ldflags (-X main.Version=...).
+var Version = "dev"
+
 func main() {
 	systray.Run(onReady, onExit)
 }

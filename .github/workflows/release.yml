@@ -10,24 +10,30 @@ permissions:
 
 jobs:
   build:
-    name: Build binaries
-    runs-on: ubuntu-latest
+    name: ${{ matrix.asset }}
+    runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - goos: darwin
+          - runner: macos-13
+            goos: darwin
             goarch: amd64
             asset: tokalytics-darwin-amd64
-          - goos: darwin
+          - runner: macos-latest
+            goos: darwin
             goarch: arm64
             asset: tokalytics-darwin-arm64
-          - goos: linux
+          - runner: ubuntu-latest
+            goos: linux
             goarch: amd64
             asset: tokalytics-linux-amd64
-          - goos: linux
+          - runner: ubuntu-24.04-arm
+            goos: linux
             goarch: arm64
             asset: tokalytics-linux-arm64
-          - goos: windows
+          - runner: windows-latest
+            goos: windows
             goarch: amd64
             asset: tokalytics-windows-amd64.exe
 
@@ -38,12 +44,43 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Build
+      - name: Linux dependencies (GTK / systray)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgtk-3-dev libayatana-appindicator3-dev
+
+      - name: Install MinGW (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install mingw -y --no-progress
+          $bin = $null
+          $gcc = Get-Command gcc -ErrorAction SilentlyContinue
+          if ($gcc) { $bin = Split-Path $gcc.Source }
+          if (-not $bin) {
+            $found = Get-ChildItem "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter "gcc.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $bin = Split-Path $found.FullName }
+          }
+          if (-not $bin) { throw "gcc não encontrado após choco install mingw" }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: go build -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o ${{ matrix.asset }} .
+          CGO_ENABLED: 1
+        run: go build -trimpath -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o ${{ matrix.asset }} .
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 1
+        run: go build -trimpath -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o ${{ matrix.asset }} .
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
@@ -63,7 +100,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Set version from tag
-        run: npm version ${{ github.ref_name }} --no-git-tag-version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          npm version "$VERSION" --no-git-tag-version
 
       - name: Publish
         env:
