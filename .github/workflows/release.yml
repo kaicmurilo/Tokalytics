@@ -98,6 +98,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          always-auth: true
 
       - name: Set version from tag
         shell: bash
@@ -105,6 +106,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version
 
+      # Exige token granular npm com "Bypass two-factor authentication" ligado;
+      # senão o publish falha com EOTP (não dá para passar --otp no CI).
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
