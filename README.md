@@ -1,20 +1,21 @@
-# Tokalytics
+# Tokalytics (CodexBar + Claude Spend)
 
-**Em construção** — projeto em desenvolvimento; README, CLI e instruções de uso podem mudar sem aviso prévio.
+**One-liner:** Um System Tray App nativo e Dashboard Web para uso de tokens e quotas de APIs (Claude, Cursor, Gemini, Codex, Copilot, etc), re-escrito em Go para máxima performance.
 
-*Work in progress.*
+## Funcionalidades
+- **Menu Bar App**: Acesso rápido a quotas e custos direto da barra de tarefas do sistema.
+- **Notificações**: Alertas nativos do SO quando as quotas esgotam.
+- **Multi-Provedor**: Arquitetura pronta para suportar até 15+ provedores de IA integrados.
 
-## O que é
+## Instalação e Execução
 
-Ferramenta local para acompanhar uso de tokens em fluxos de trabalho com IA no editor (ex.: Claude Code). Os detalhes de instalação e uso serão publicados quando houver uma versão estável.
+```bash
+go run main.go
+```
 
-## Credits
+Isso inicializa:
+1. O ícone na sua barra de menus.
+2. O Dashboard web na porta `3456`.
 
-Tokalytics é baseado e inspirado em:
-
-- [claude-spend](https://github.com/writetoaniketparihar-collab/claude-spend) — dashboard local de tokens do Claude Code.
-- [CodexBar](https://github.com/steipete/codexbar) — estatísticas de uso (Codex, Claude, Cursor, Gemini e outros).
-
-## License
-
+## Licença
 MIT

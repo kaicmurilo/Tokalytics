@@ -1,13 +1,12 @@
 {
-  "name": "Tokalytics",
-  "version": "1.0.6",
-  "description": "See where your Claude Code tokens go. One command, zero setup.",
-  "main": "src/index.js",
-  "bin": {
-    "Tokalytics": "src/index.js"
-  },
+  "name": "tokalytics",
+  "version": "2.0.0",
+  "description": "Veja para onde vão seus tokens do Claude Code, Gemini CLI, Cursor e Codex. Reescrito em Go como Tokalytics.",
+  "main": "main.go",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "go build -o tokalytics main.go && ./tokalytics",
+    "dev": "go run main.go",
+    "build": "go build -o tokalytics main.go"
   },
   "keywords": [
     "claude",
@@ -17,16 +16,14 @@
     "analytics",
     "dashboard",
     "spend",
-    "cost"
+    "codexbar",
+    "golang",
+    "tokalytics"
   ],
-  "author": "Aniket Parihar",
+  "author": "Aniket Parihar & Kaic Murilo",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/writetoaniketparihar-collab/Tokalytics.git"
-  },
-  "dependencies": {
-    "express": "^4.21.0",
-    "open": "^10.1.0"
+    "url": "https://github.com/kaicmurilo/tokalytics.git"
   }
 }
