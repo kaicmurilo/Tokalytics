@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -59,24 +60,44 @@ func listenFrom(basePort, maxAttempts int) (net.Listener, int, error) {
 func main() {
 	stopF := flag.Bool("stop", false, "Encerra a instância em execução (via API local)")
 	reloadF := flag.Bool("reload", false, "Pede atualização de dados na instância em execução")
+	statusF := flag.Bool("status", false, "Mostra se há instância rodando, URL, versão da API e PID (runstate)")
+	devF := flag.Bool("dev", false, "Desenvolvimento: ignora instância já em execução e sobe outra (porta seguinte se 3456 ocupada)")
 	_ = flag.Bool("start", false, "Inicia se ainda não houver instância (equivalente ao app sem flags)")
 	var showVersion bool
-	flag.BoolVar(&showVersion, "version", false, "Mostra a versão e sai")
-	flag.BoolVar(&showVersion, "v", false, "Mostra a versão e sai (atalho)")
+	flag.BoolVar(&showVersion, "version", false, "Mostra a versão deste binário e sai (-v e --v também)")
+	flag.BoolVar(&showVersion, "v", false, "Mostra a versão deste binário e sai (atalho de -version)")
+	var showHelp bool
+	flag.BoolVar(&showHelp, "h", false, "Mostra esta ajuda e sai")
+	flag.BoolVar(&showHelp, "help", false, "Mostra esta ajuda e sai")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Uso: tokalytics [opções]\n\n")
+		fmt.Fprintf(os.Stderr, "Uso: tokalytics [opções]\n")
+		fmt.Fprintf(os.Stderr, "     tokalytics help\n\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nSem flags: abre o menu bar e o dashboard se ainda não existir instância.\n")
+		fmt.Fprintf(os.Stderr, "Use -dev (ou TOKALYTICS_DEV=1) para rodar em paralelo ao app instalado.\n")
 	}
 	flag.Parse()
-	if len(flag.Args()) > 0 {
-		fmt.Fprintf(os.Stderr, "argumento inesperado: %q\n\n", flag.Args()[0])
+	args := flag.Args()
+	if len(args) > 0 {
+		if len(args) == 1 && strings.EqualFold(args[0], "help") {
+			flag.Usage()
+			os.Exit(0)
+		}
+		fmt.Fprintf(os.Stderr, "argumento inesperado: %q\n\n", args[0])
 		flag.Usage()
 		os.Exit(2)
 	}
 
+	if showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
 	if showVersion {
 		fmt.Println(Version)
+		return
+	}
+	if *statusF {
+		cmdStatus()
 		return
 	}
 	if *stopF {
@@ -92,9 +113,14 @@ func main() {
 		return
 	}
 
-	if port, ok := instancectl.FindRunning(); ok {
-		fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
-		os.Exit(0)
+	skipSingleton := *devF || os.Getenv("TOKALYTICS_DEV") == "1" ||
+		strings.EqualFold(os.Getenv("TOKALYTICS_DEV"), "true")
+	if !skipSingleton {
+		if port, ok := instancectl.FindRunning(); ok {
+			fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
+			fmt.Fprintf(os.Stderr, "Dica: npm run dev ou go run . -dev para desenvolvimento em paralelo.\n")
+			os.Exit(0)
+		}
 	}
 
 	systray.Run(onReady, onExit)
@@ -135,6 +161,26 @@ func cmdReload() error {
 	}
 	fmt.Println("Atualização de dados solicitada na instância em execução.")
 	return nil
+}
+
+func cmdStatus() {
+	fmt.Printf("CLI (binário): %s\n", Version)
+	port, apiVer, ok := instancectl.RunningInfo()
+	if ok {
+		fmt.Println("Estado: rodando")
+		fmt.Printf("URL: http://127.0.0.1:%d/\n", port)
+		if apiVer != "" {
+			fmt.Printf("Versão (API): %s\n", apiVer)
+		}
+		if rs, err := runstate.Read(); err == nil && rs.Port == port && rs.PID > 0 {
+			fmt.Printf("PID: %d\n", rs.PID)
+		}
+		return
+	}
+	fmt.Printf("Estado: parado (nenhuma resposta nas portas %d–%d)\n", instancectl.PortMin, instancectl.PortMax)
+	if rs, err := runstate.Read(); err == nil && (rs.PID > 0 || rs.Port > 0) {
+		fmt.Printf("runstate (pode estar obsoleto): pid=%d port=%d\n", rs.PID, rs.Port)
+	}
 }
 
 func onReady() {

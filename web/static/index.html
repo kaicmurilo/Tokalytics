@@ -1,6 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function () {
+  try {
+    var k = 'tokalytics-theme';
+    var v = localStorage.getItem(k);
+    var dark;
+    if (v === 'dark') dark = true;
+    else if (v === 'light') dark = false;
+    else dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  } catch (e) {}
+})();
+</script>
+<script>
+(function () {
+  try {
+    var k = 'tokalytics-lang';
+    var v = localStorage.getItem(k);
+    var lang = (v === 'en' || v === 'pt-BR') ? v : ((navigator.language || '').toLowerCase().indexOf('pt') === 0 ? 'pt-BR' : 'en');
+    document.documentElement.setAttribute('lang', lang === 'pt-BR' ? 'pt-BR' : 'en');
+  } catch (e) {}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tokalytics</title>
@@ -10,6 +33,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
+    color-scheme: light;
     --bg: #F8F9FC;
     --bg-mesh-1: #EEF0FF;
     --bg-mesh-2: #F0FDFA;
@@ -19,6 +43,27 @@
     --text-tertiary: #94A3B8;
     --border: rgba(0,0,0,0.06);
     --border-strong: rgba(0,0,0,0.1);
+
+    --surface-muted: #FAFBFC;
+    --row-hover: #FAFBFF;
+    --surface-hover-strong: #EEF2FF;
+    --progress-bg: #E2E8F0;
+    --nav-fade-top: rgba(248,249,252,0.98);
+    --nav-fade-bot: rgba(248,249,252,0.85);
+    --nav-active-border: rgba(99,102,241,0.28);
+    --help-icon-bg: rgba(0,0,0,0.06);
+    --how-tokens-hover: rgba(0,0,0,0.015);
+    --chart-axis: #94A3B8;
+    --chart-grid: rgba(0,0,0,0.04);
+    --chart-center-text: #0F172A;
+    --donut-stroke: #FFFFFF;
+    --code-bg: #F1F5F9;
+    --code-text: #0F172A;
+    --plugin-badge-bg: #F5F3FF;
+    --plugin-badge-border: #DDD6FE;
+    --plugin-badge-text: #6D28D9;
+    --tooltip-fg: #F8FAFC;
+    --dismiss-hover-bg: rgba(0,0,0,0.04);
 
     --indigo: #6366F1;
     --violet: #8B5CF6;
@@ -46,6 +91,48 @@
     --radius-xs: 6px;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b0e13;
+    --white: #151b24;
+    --text: #e4e9f2;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.45);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.5);
+    --shadow-lg: 0 8px 36px rgba(0,0,0,0.55);
+    --shadow-glow: 0 0 48px rgba(99,102,241,0.22);
+    --surface-muted: #121824;
+    --row-hover: rgba(99,102,241,0.14);
+    --surface-hover-strong: rgba(99,102,241,0.22);
+    --progress-bg: #2a3444;
+    --nav-fade-top: rgba(11,14,19,0.92);
+    --nav-fade-bot: rgba(11,14,19,0.78);
+    --nav-active-border: rgba(165,180,252,0.35);
+    --help-icon-bg: rgba(255,255,255,0.08);
+    --how-tokens-hover: rgba(255,255,255,0.04);
+    --chart-axis: #64748b;
+    --chart-grid: rgba(255,255,255,0.07);
+    --chart-center-text: #f1f5f9;
+    --donut-stroke: #151b24;
+    --code-bg: #1c2430;
+    --code-text: #e2e8f0;
+    --plugin-badge-bg: rgba(139,92,246,0.22);
+    --plugin-badge-border: rgba(167,139,250,0.35);
+    --plugin-badge-text: #c4b5fd;
+    --tooltip-fg: #f8fafc;
+    --dismiss-hover-bg: rgba(255,255,255,0.08);
+  }
+
+  [data-theme="dark"] body::before {
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%, rgba(99,102,241,0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 50% at 90% 10%, rgba(139,92,246,0.14) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 40% at 50% 20%, rgba(20,184,166,0.1) 0%, transparent 50%);
   }
 
   body {
@@ -78,7 +165,7 @@
   }
   .provider-name { font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
   .provider-pct { font-weight: 700; font-size: 14px; }
-  .progress-bg { height: 6px; background: #E2E8F0; border-radius: 3px; overflow: hidden; }
+  .progress-bg { height: 6px; background: var(--progress-bg); border-radius: 3px; overflow: hidden; }
   .progress-fill { height: 100%; background: var(--gradient-main); border-radius: 3px; transition: width 0.3s ease; }
   .provider-reset { font-size: 11px; color: var(--text-tertiary); }
 
@@ -118,7 +205,7 @@
     margin-bottom: 24px; padding: 4px 0 18px;
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 20;
-    background: linear-gradient(to bottom, rgba(248,249,252,0.98) 70%, rgba(248,249,252,0.85) 100%);
+    background: linear-gradient(to bottom, var(--nav-fade-top) 70%, var(--nav-fade-bot) 100%);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
@@ -132,7 +219,7 @@
   .app-nav-link:hover { background: var(--white); border-color: var(--border); color: var(--text); }
   .app-nav-link.active {
     background: var(--white); color: var(--indigo);
-    border-color: rgba(99,102,241,0.28); box-shadow: var(--shadow-sm);
+    border-color: var(--nav-active-border); box-shadow: var(--shadow-sm);
   }
   .app-page { display: none; }
   .app-page.active { display: block; animation: fadeUp 0.35s ease-out both; }
@@ -184,6 +271,18 @@
     box-shadow: 0 2px 8px rgba(99,102,241,0.12);
   }
   .refresh-btn svg { width: 14px; height: 14px; }
+  .theme-toggle-btn { padding: 7px 12px; }
+  .theme-toggle-icon { display: flex; align-items: center; justify-content: center; }
+  .lang-toggle-group { display: flex; gap: 4px; align-items: center; }
+  .lang-btn { padding: 7px 10px; min-width: 40px; justify-content: center; font-weight: 600; font-size: 12px; letter-spacing: 0.02em; }
+  .lang-btn.lang-btn-active { border-color: var(--indigo) !important; color: var(--indigo) !important; }
+  .header-refresh-group {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header-version {
+    font-size: 12px; font-weight: 600; font-family: var(--mono);
+    color: var(--text-tertiary); letter-spacing: 0.02em; white-space: nowrap;
+  }
 
   /* ---- STAT CARDS ---- */
   .stats-row {
@@ -226,7 +325,7 @@
     left: 50%;
     transform: translateX(-50%);
     background: var(--text);
-    color: #F8FAFC;
+    color: var(--tooltip-fg);
     font-size: 12px;
     font-weight: 500;
     line-height: 1.5;
@@ -277,7 +376,7 @@
     width: 15px;
     height: 15px;
     border-radius: 50%;
-    background: rgba(0,0,0,0.06);
+    background: var(--help-icon-bg);
     color: var(--text-tertiary);
     font-size: 10px;
     font-weight: 700;
@@ -329,6 +428,9 @@
   .insight-card.warning .insight-indicator { background: linear-gradient(135deg, #FEF3C7, #FDE68A); }
   .insight-card.info .insight-indicator { background: linear-gradient(135deg, #E0E7FF, #C7D2FE); }
   .insight-card.neutral .insight-indicator { background: linear-gradient(135deg, #F1F5F9, #E2E8F0); }
+  [data-theme="dark"] .insight-card.warning .insight-indicator { background: linear-gradient(135deg, rgba(245,158,11,0.35), rgba(217,119,6,0.2)); }
+  [data-theme="dark"] .insight-card.info .insight-indicator { background: linear-gradient(135deg, rgba(99,102,241,0.35), rgba(129,140,248,0.18)); }
+  [data-theme="dark"] .insight-card.neutral .insight-indicator { background: linear-gradient(135deg, rgba(148,163,184,0.25), rgba(100,116,139,0.15)); }
   .insight-title { font-size: 14px; font-weight: 700; line-height: 1.4; }
   .insight-oneliner { font-size: 13px; color: var(--text-secondary); margin-left: auto; white-space: nowrap; font-weight: 500; }
   @media (max-width: 640px) {
@@ -367,7 +469,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 18px 24px; cursor: pointer; user-select: none;
   }
-  .how-tokens-toggle:hover { background: rgba(0,0,0,0.015); }
+  .how-tokens-toggle:hover { background: var(--how-tokens-hover); }
   .how-tokens-toggle h3 {
     font-size: 13px; font-weight: 700; color: var(--text-tertiary);
     text-transform: uppercase; letter-spacing: 0.5px; margin: 0;
@@ -402,13 +504,13 @@
     .step-tokens { flex-basis: 100%; margin-left: 90px; }
   }
   .step-label {
-    font-weight: 600; color: var(--text-primary); min-width: 80px; flex-shrink: 0;
+    font-weight: 600; color: var(--text); min-width: 80px; flex-shrink: 0;
   }
   .step-desc { flex: 1; }
   .step-tokens { font-weight: 600; white-space: nowrap; }
   .how-tokens-total {
     margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
-    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    font-size: 13px; font-weight: 600; color: var(--text);
   }
   .how-tokens-types { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
   .how-tokens-type {
@@ -421,6 +523,9 @@
   .how-tokens-tip {
     background: linear-gradient(135deg, #EEF2FF, #E0E7FF); border-radius: 10px;
     padding: 14px 18px; font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  }
+  [data-theme="dark"] .how-tokens-tip {
+    background: linear-gradient(135deg, rgba(99,102,241,0.18), rgba(99,102,241,0.08));
   }
   .how-tokens-tip code {
     background: rgba(99,102,241,0.1); padding: 2px 6px; border-radius: 4px;
@@ -459,7 +564,7 @@
     cursor: pointer; transition: background 0.15s;
   }
   .prompt-row:last-child { border-bottom: none; }
-  .prompt-row:hover { background: #FAFBFF; }
+  .prompt-row:hover { background: var(--row-hover); }
   .prompt-rank {
     width: 28px; height: 28px; border-radius: 8px;
     background: var(--bg); display: flex; align-items: center; justify-content: center;
@@ -511,17 +616,17 @@
     color: var(--text-tertiary); transition: transform 0.25s ease; flex-shrink: 0;
   }
   .proj-row { cursor: pointer; }
-  .proj-row:hover td { background: #FAFBFF; }
+  .proj-row:hover td { background: var(--row-hover); }
   .proj-row.expanded .proj-chevron { transform: rotate(90deg); }
   .proj-drawer td { padding: 0; border-bottom: 1px solid var(--border); }
-  .proj-drawer-inner { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; background: #FAFBFC; }
+  .proj-drawer-inner { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; background: var(--surface-muted); }
   .proj-drawer.open .proj-drawer-inner { max-height: 600px; }
   .proj-drawer-content { padding: 12px 16px 16px; }
   .drawer-prompt-list { display: flex; flex-direction: column; gap: 8px; }
   .drawer-prompt-row {
     display: grid; grid-template-columns: 24px 1fr auto;
     gap: 10px; padding: 10px 14px; align-items: start;
-    background: white; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--white); border: 1px solid var(--border); border-radius: 10px;
     cursor: pointer; transition: box-shadow 0.15s;
   }
   .drawer-prompt-row:hover { box-shadow: var(--shadow-md); }
@@ -583,7 +688,7 @@
     letter-spacing: 0.6px; color: var(--text-tertiary);
     border-bottom: 1px solid var(--border);
     cursor: pointer; user-select: none; white-space: nowrap;
-    background: #FAFBFC;
+    background: var(--surface-muted);
   }
   .sessions-table th:hover { color: var(--text-secondary); }
   .sessions-table th.sorted { color: var(--indigo); }
@@ -591,7 +696,7 @@
     padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle;
   }
   .sessions-table tbody tr { cursor: pointer; transition: background 0.1s; }
-  .sessions-table tbody tr:hover td { background: #FAFBFF; }
+  .sessions-table tbody tr:hover td { background: var(--row-hover); }
   .sessions-table tbody tr:last-child td { border-bottom: none; }
   .prompt-preview {
     max-width: 340px; overflow: hidden; text-overflow: ellipsis;
@@ -613,6 +718,10 @@
   .model-sonnet { background: #ECFDF5; color: #047857; }
   .model-haiku { background: #FFF7ED; color: #C2410C; }
   .model-unknown { background: #F1F5F9; color: #475569; }
+  [data-theme="dark"] .model-opus { background: rgba(79,70,229,0.28); color: #c7d2fe; }
+  [data-theme="dark"] .model-sonnet { background: rgba(16,185,129,0.22); color: #6ee7b7; }
+  [data-theme="dark"] .model-haiku { background: rgba(249,115,22,0.22); color: #fdba74; }
+  [data-theme="dark"] .model-unknown { background: rgba(148,163,184,0.18); color: #cbd5e1; }
   .model-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .model-opus .model-dot { background: #4F46E5; }
   .model-sonnet .model-dot { background: #10B981; }
@@ -668,7 +777,7 @@
     font-size: 18px; display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; transition: all 0.15s;
   }
-  .drilldown-close:hover { background: #EEF2FF; color: var(--indigo); }
+  .drilldown-close:hover { background: var(--surface-hover-strong); color: var(--indigo); }
 
   .query-list { display: flex; flex-direction: column; gap: 8px; }
   .query-item {
@@ -677,7 +786,7 @@
     background: var(--bg); align-items: start;
     transition: background 0.1s;
   }
-  .query-item:hover { background: #EEF2FF; }
+  .query-item:hover { background: var(--surface-hover-strong); }
   .query-num {
     width: 28px; height: 28px; border-radius: 8px; background: var(--white);
     border: 1px solid var(--border);
@@ -704,11 +813,13 @@
 
   /* ---- FOOTER ---- */
   .footer {
-    text-align: center; padding: 24px;
+    text-align: center; padding: 24px 24px 32px;
     color: var(--text-tertiary); font-size: 13px; font-weight: 500;
+    margin-top: 8px;
   }
   .footer a { color: var(--indigo); text-decoration: none; font-weight: 600; }
   .footer a:hover { text-decoration: underline; }
+  .footer-sep { color: var(--text-tertiary); font-weight: 400; margin: 0 2px; }
 
   /* Hero / value prop */
   .hero-section {
@@ -736,6 +847,9 @@
     padding: 10px 16px; margin-bottom: 16px; font-size: 13px;
     color: #92400E; line-height: 1.6; display: none;
   }
+  [data-theme="dark"] .warnings-banner {
+    background: rgba(245,158,11,0.12); border-color: rgba(251,191,36,0.35); color: #fcd34d;
+  }
   .warnings-banner.visible { display: block; }
   .warnings-banner .warn-close {
     float: right; background: none; border: none; cursor: pointer;
@@ -743,6 +857,7 @@
     opacity: 0.6; transition: opacity 0.15s;
   }
   .warnings-banner .warn-close:hover { opacity: 1; }
+  [data-theme="dark"] .warnings-banner .warn-close { color: #fcd34d; }
   .warnings-banner ul { margin: 4px 0 0 16px; padding: 0; }
   .warnings-banner li { margin-bottom: 2px; }
 
@@ -786,7 +901,7 @@
     align-items: center;
     justify-content: center;
   }
-  .update-slide-dismiss:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+  .update-slide-dismiss:hover { color: var(--text); background: var(--dismiss-hover-bg); }
   .update-slide-title {
     font-size: 14px;
     font-weight: 700;
@@ -810,7 +925,7 @@
     margin: 0 0 6px;
   }
   .update-slide-cmd {
-    background: #F1F5F9;
+    background: var(--code-bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 12px;
@@ -820,7 +935,7 @@
   .update-slide-cmd code {
     font-family: var(--mono);
     font-size: 11px;
-    color: #0F172A;
+    color: var(--code-text);
     word-break: break-all;
     white-space: pre-wrap;
   }
@@ -851,34 +966,9 @@
     .update-slide { top: auto; bottom: 16px; border-radius: var(--radius-sm); border-right: 1px solid var(--border-strong); width: calc(100vw - 24px); right: 12px; }
   }
 
-  /* Share card overlay */
-  .share-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-    display: none; align-items: center; justify-content: center; z-index: 1000;
-    backdrop-filter: blur(4px);
-  }
-  .share-overlay.open { display: flex; }
-  .share-modal {
-    background: var(--white); border-radius: var(--radius); padding: 24px;
-    max-width: 680px; width: 90%; box-shadow: var(--shadow-lg);
-  }
-  .share-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
-  .share-modal canvas { width: 100%; border-radius: 8px; border: 1px solid var(--border); }
-  .share-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
-  .share-actions button {
-    padding: 8px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
-    cursor: pointer; font-family: var(--font); transition: all 0.2s;
-  }
-  .btn-download {
-    background: var(--gradient-main); color: white; border: none;
-    box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-  }
-  .btn-download:hover { box-shadow: 0 4px 16px rgba(99,102,241,0.4); transform: translateY(-1px); }
-  .btn-cancel { background: var(--white); border: 1px solid var(--border); color: var(--text-secondary); }
-  .btn-cancel:hover { border-color: var(--border-strong); }
 .plugin-tool-card { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:20px; min-width:220px; flex:1; }
 .plugin-tool-title { font-size:13px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; }
-.plugin-badge { display:inline-block; background:#F5F3FF; border:1px solid #DDD6FE; color:#6D28D9; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:500; margin:3px; }
+.plugin-badge { display:inline-block; background:var(--plugin-badge-bg); border:1px solid var(--plugin-badge-border); color:var(--plugin-badge-text); border-radius:6px; padding:4px 10px; font-size:12px; font-weight:500; margin:3px; }
 .plugin-empty { color:var(--text-secondary); font-size:13px; font-style:italic; }
 .plugin-section-label { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
 
@@ -914,20 +1004,20 @@
 <body>
 
 <aside id="updateSlide" class="update-slide" hidden aria-live="polite">
-  <button type="button" class="update-slide-dismiss" onclick="dismissUpdateSlide()" aria-label="Fechar aviso de atualização">×</button>
+  <button type="button" class="update-slide-dismiss" onclick="dismissUpdateSlide()" data-i18n-aria="updateDismissAria" aria-label="Dismiss update notice">×</button>
   <div class="update-slide-inner">
-    <div class="update-slide-title">Nova versão no GitHub</div>
-    <p class="update-slide-text">A versão <strong id="updateSlideLatest">—</strong> está disponível. Você está na <strong id="updateSlideCurrent">—</strong>.</p>
-    <p class="update-slide-label">Atualizar (npm)</p>
+    <div class="update-slide-title" data-i18n="updateTitle">New version on GitHub</div>
+    <p class="update-slide-text"><span id="updateSlideIntroPrefix"></span><strong id="updateSlideLatest">—</strong><span id="updateSlideIntroMid"></span><strong id="updateSlideCurrent">—</strong><span id="updateSlideIntroSuffix"></span></p>
+    <p class="update-slide-label" data-i18n="updateNpmLabel">Update (npm)</p>
     <div class="update-slide-cmd"><code id="updateSlideCmd">npm install -g tokalytics</code></div>
-    <button type="button" class="update-slide-copy" id="updateSlideCopy" onclick="copyUpdateCommand()">Copiar comando</button>
-    <a id="updateSlideLink" class="update-slide-link" href="#" target="_blank" rel="noopener noreferrer">Abrir página da release</a>
+    <button type="button" class="update-slide-copy" id="updateSlideCopy" onclick="copyUpdateCommand()" data-i18n="updateCopy">Copy command</button>
+    <a id="updateSlideLink" class="update-slide-link" href="#" target="_blank" rel="noopener noreferrer" data-i18n="updateLink">Open release page</a>
   </div>
 </aside>
 
 <div id="loading" class="loading">
   <div class="spinner"></div>
-  <div class="loading-text">Loading Tokalytics sessions...</div>
+  <div class="loading-text" data-i18n="loading">Loading Tokalytics sessions…</div>
 </div>
 
 <div id="app" class="container" style="display:none">
@@ -945,28 +1035,35 @@
     </div>
     <div class="header-right">
       <span id="dateRange" class="date-range"></span>
+      <div class="lang-toggle-group" id="langToggleGroup" role="group" data-i18n-aria="langToggleAria" aria-label="Language">
+        <button type="button" class="refresh-btn lang-btn" data-lang="en" id="langEnBtn" onclick="TokalyticsI18n.setLang('en')" title="English">EN</button>
+        <button type="button" class="refresh-btn lang-btn" data-lang="pt-BR" id="langPtBtn" onclick="TokalyticsI18n.setLang('pt-BR')" title="Português (Brasil)">PT</button>
+      </div>
+      <button type="button" class="refresh-btn theme-toggle-btn" id="themeToggleBtn" onclick="cycleThemePref()" title="Theme" aria-label="Theme">
+        <span id="themeToggleIcon" class="theme-toggle-icon" aria-hidden="true"></span>
+      </button>
       <button class="refresh-btn" onclick="openSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
+        <span data-i18n="hdrSettings">Settings</span>
       </button>
-      <button onclick="openShareModal()" style="background:var(--gradient-main);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">
-        Share Stats
-      </button>
-      <button class="refresh-btn" onclick="refreshData()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-        Refresh
-      </button>
+      <div class="header-refresh-group">
+        <span id="appVersion" class="header-version" data-i18n-title="hdrVersionTitle" data-i18n-aria="hdrVersionAria" title="Tokalytics version" aria-label="Tokalytics version">—</span>
+        <button class="refresh-btn" onclick="refreshData()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          <span data-i18n="hdrRefresh">Refresh</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <nav class="app-nav" id="appNav" aria-label="Seções do dashboard">
-    <button type="button" class="app-nav-link active" data-page="overview" id="nav-overview">Visão geral</button>
-    <button type="button" class="app-nav-link" data-page="charts" id="nav-charts">Gráficos</button>
-    <button type="button" class="app-nav-link" data-page="insights" id="nav-insights">Insights</button>
-    <button type="button" class="app-nav-link" data-page="prompts" id="nav-prompts">Prompts</button>
-    <button type="button" class="app-nav-link" data-page="sessions" id="nav-sessions">Sessões</button>
-    <button type="button" class="app-nav-link" data-page="resources" id="nav-resources">Recursos</button>
-    <button type="button" class="app-nav-link" data-page="plugins" id="nav-plugins">Plugins</button>
+  <nav class="app-nav" id="appNav" data-i18n-aria="navAria" aria-label="Dashboard sections">
+    <button type="button" class="app-nav-link active" data-page="overview" id="nav-overview" data-i18n="navOverview">Overview</button>
+    <button type="button" class="app-nav-link" data-page="charts" id="nav-charts" data-i18n="navCharts">Charts</button>
+    <button type="button" class="app-nav-link" data-page="insights" id="nav-insights" data-i18n="navInsights">Insights</button>
+    <button type="button" class="app-nav-link" data-page="prompts" id="nav-prompts" data-i18n="navPrompts">Prompts</button>
+    <button type="button" class="app-nav-link" data-page="sessions" id="nav-sessions" data-i18n="navSessions">Sessions</button>
+    <button type="button" class="app-nav-link" data-page="resources" id="nav-resources" data-i18n="navResources">Resources</button>
+    <button type="button" class="app-nav-link" data-page="plugins" id="nav-plugins" data-i18n="navPlugins">Plugins</button>
   </nav>
 
   <!-- Página: visão geral -->
@@ -978,55 +1075,10 @@
   <!-- How Tokens Work -->
   <div class="how-tokens animate delay-1">
     <div class="how-tokens-toggle" onclick="this.parentElement.classList.toggle('expanded')">
-      <h3>How Claude Code tokens work</h3>
+      <h3 data-i18n="howTokensTitle">How Claude Code tokens work</h3>
       <div class="how-tokens-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg></div>
     </div>
-    <div class="how-tokens-body">
-      <p>Every time you send a message, Claude doesn't just read your latest message. It re-reads your <strong>entire conversation</strong> from the beginning. That's why tokens add up fast.</p>
-
-      <div class="how-tokens-example">
-        <div class="how-tokens-example-title">Example: A 3-message conversation</div>
-        <div class="how-tokens-step">
-          <span class="step-label">Message 1</span>
-          <span class="step-desc">You send "Help me fix this bug." Claude reads your message fresh (<span style="color:var(--indigo)">input</span>) and saves the conversation to cache (<span style="color:var(--rose)">cache write</span>).</span>
-          <span class="step-tokens">~4K tokens</span>
-        </div>
-        <div class="how-tokens-step">
-          <span class="step-label">Message 2</span>
-          <span class="step-desc">You reply "Try the other file." Claude reuses message 1 from cache (<span style="color:var(--amber)">cache read</span> — 10x cheaper) and only processes your new message fresh (<span style="color:var(--indigo)">input</span>). Then saves the updated conversation (<span style="color:var(--rose)">cache write</span>).</span>
-          <span class="step-tokens">~8K tokens</span>
-        </div>
-        <div class="how-tokens-step">
-          <span class="step-label">Message 3</span>
-          <span class="step-desc">Claude reuses messages 1-2 from cache (<span style="color:var(--amber)">cache read</span>) and processes your new message fresh (<span style="color:var(--indigo)">input</span>). Claude's reply is <span style="color:var(--teal)">output</span>.</span>
-          <span class="step-tokens">~14K tokens</span>
-        </div>
-        <div class="how-tokens-total">Without caching, every message would be processed at full price. Cache reads save you up to 10x on repeated context.</div>
-      </div>
-
-      <div class="how-tokens-types">
-        <div class="how-tokens-type">
-          <div class="how-tokens-dot" style="background:var(--indigo)"></div>
-          <div><strong>Input</strong> — Your message + conversation history, processed fresh. Full price.</div>
-        </div>
-        <div class="how-tokens-type">
-          <div class="how-tokens-dot" style="background:var(--rose)"></div>
-          <div><strong>Cache writes</strong> — Claude saves your conversation so it doesn't re-process everything next time. Costs 1.25x input, but only happens once.</div>
-        </div>
-        <div class="how-tokens-type">
-          <div class="how-tokens-dot" style="background:var(--amber)"></div>
-          <div><strong>Cache reads</strong> — Follow-up messages reuse the saved context. 10x cheaper than input. More cache reads = more savings.</div>
-        </div>
-        <div class="how-tokens-type">
-          <div class="how-tokens-dot" style="background:var(--teal)"></div>
-          <div><strong>Output</strong> — What Claude writes back. Most expensive per token, but usually the smallest amount.</div>
-        </div>
-      </div>
-
-      <div class="how-tokens-tip">
-        <strong>Tip:</strong> Use <code>/clear</code> when switching tasks. It resets the conversation so Claude stops re-reading old context you no longer need.
-      </div>
-    </div>
+    <div class="how-tokens-body" id="howTokensBody"></div>
   </div>
 
   <!-- Stats -->
@@ -1037,17 +1089,17 @@
   <div id="page-charts" class="app-page">
   <div class="charts-grid animate delay-3">
     <div class="chart-card">
-      <h3 class="has-tooltip has-tooltip-below" style="display:inline-block">Tokens per Day<div class="tooltip">How many tokens you used each day, broken down by type and cost.</div></h3>
+      <h3 class="has-tooltip has-tooltip-below" style="display:inline-block"><span data-i18n="chartDailyTitle">Tokens per day</span><div class="tooltip" data-i18n="chartDailyTip">How many tokens you used each day, broken down by type and cost.</div></h3>
       <canvas id="dailyChart"></canvas>
       <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--indigo)"></div> Input</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div> Cache writes</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Cache reads</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div> Output</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--indigo)"></div> <span data-i18n="legendInput">Input</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div> <span data-i18n="legendCacheWrite">Cache writes</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> <span data-i18n="legendCacheRead">Cache reads</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div> <span data-i18n="legendOutput">Output</span></div>
       </div>
     </div>
     <div class="chart-card">
-      <h3>By Model</h3>
+      <h3 data-i18n="chartByModel">By model</h3>
       <canvas id="modelChart"></canvas>
       <div id="modelLegend" class="legend" style="flex-direction:column; gap:12px; margin-top:20px;"></div>
     </div>
@@ -1061,13 +1113,13 @@
       <div class="section-icon" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a7 7 0 0 1 4 12.75V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.25A7 7 0 0 1 12 2z"/><path d="M9 21h6"/></svg>
       </div>
-      <div class="section-title">Insights</div>
+      <div class="section-title" data-i18n="insightsSection">Insights</div>
     </div>
     <div id="insightsList"></div>
   </div>
   <div id="insightsEmpty" class="chart-card animate" style="display:none">
-    <h3 style="margin-bottom:8px">Nenhum insight</h3>
-    <p style="font-size:14px;color:var(--text-secondary);line-height:1.6">Não há recomendações para o período selecionado. Insights aparecem quando há padrões relevantes no uso.</p>
+    <h3 style="margin-bottom:8px" data-i18n="insightsEmptyTitle">No insights</h3>
+    <p style="font-size:14px;color:var(--text-secondary);line-height:1.6" data-i18n="insightsEmptyBody">There are no recommendations for the selected period.</p>
   </div>
   </div>
 
@@ -1079,7 +1131,7 @@
       <div class="section-icon" style="background:linear-gradient(135deg,#E0E7FF,#C7D2FE)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
       </div>
-      <div class="section-title has-tooltip has-tooltip-below" style="display:inline-flex">Most Expensive Prompts<div class="tooltip">Your top 20 individual messages ranked by how many tokens they used. Short vague messages like "Yes" often rank highest because they trigger long chains of tool calls where Claude tries to figure out what you meant.</div></div>
+      <div class="section-title has-tooltip has-tooltip-below" style="display:inline-flex"><span data-i18n="promptsTitle">Most expensive prompts</span><div class="tooltip" data-i18n="promptsTip">Your top 20 individual messages ranked by how many tokens they used.</div></div>
     </div>
     <div class="prompts-card" id="topPromptsList"></div>
   </div>
@@ -1093,10 +1145,10 @@
       <div class="section-icon" style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
       </div>
-      <div class="section-title">All Sessions</div>
+      <div class="section-title" data-i18n="sessionsTitle">All sessions</div>
     </div>
     <div class="sessions-toolbar">
-      <input type="text" class="session-search" id="searchInput" placeholder="Search prompts, models, projects...">
+      <input type="text" class="session-search" id="searchInput" data-i18n-placeholder="sessionsSearchPh" placeholder="Search prompts, models, projects…">
       <span id="sessionCount" class="session-count"></span>
     </div>
     <div class="sessions-card">
@@ -1104,13 +1156,13 @@
       <table class="sessions-table">
         <thead>
           <tr>
-            <th data-sort="date">Date</th>
-            <th data-sort="prompt">What you asked</th>
-            <th data-sort="model" class="has-tooltip has-tooltip-below">Model<div class="tooltip">Which AI model was used. Opus is the most capable (and uses more tokens), Sonnet is faster and lighter.</div></th>
-            <th data-sort="queries" style="text-align:right" class="has-tooltip has-tooltip-below">Messages<div class="tooltip">How many back-and-forth messages happened in this conversation, including automatic tool calls Claude made.</div></th>
-            <th data-sort="total" style="text-align:right" class="sorted has-tooltip has-tooltip-below">Total tokens<div class="tooltip">The total number of tokens used in this conversation. Higher means more expensive. Long conversations cost more because Claude re-reads everything each turn.</div></th>
-            <th data-sort="input" style="text-align:right" class="has-tooltip has-tooltip-below">Read<div class="tooltip">Tokens Claude read: your messages, the conversation history, files, and system context. This grows with each message because the full history gets re-sent.</div></th>
-            <th data-sort="output" style="text-align:right" class="has-tooltip has-tooltip-below">Written<div class="tooltip">Tokens Claude wrote back: responses, code, explanations. Usually a small fraction of the total.</div></th>
+            <th data-sort="date"><span data-i18n="sessionsThDate">Date</span></th>
+            <th data-sort="prompt"><span data-i18n="sessionsThPrompt">What you asked</span></th>
+            <th data-sort="model" class="has-tooltip has-tooltip-below"><span data-i18n="sessionsThModel">Model</span><div class="tooltip" data-i18n="sessionsThModelTip">Which AI model was used.</div></th>
+            <th data-sort="queries" style="text-align:right" class="has-tooltip has-tooltip-below"><span data-i18n="sessionsThMessages">Messages</span><div class="tooltip" data-i18n="sessionsThMessagesTip">How many back-and-forth messages happened in this conversation.</div></th>
+            <th data-sort="total" style="text-align:right" class="sorted has-tooltip has-tooltip-below"><span data-i18n="sessionsThTotal">Total tokens</span><div class="tooltip" data-i18n="sessionsThTotalTip">The total number of tokens used in this conversation.</div></th>
+            <th data-sort="input" style="text-align:right" class="has-tooltip has-tooltip-below"><span data-i18n="sessionsThRead">Read</span><div class="tooltip" data-i18n="sessionsThReadTip">Tokens Claude read.</div></th>
+            <th data-sort="output" style="text-align:right" class="has-tooltip has-tooltip-below"><span data-i18n="sessionsThWritten">Written</span><div class="tooltip" data-i18n="sessionsThWrittenTip">Tokens Claude wrote back.</div></th>
           </tr>
         </thead>
         <tbody id="sessionsBody"></tbody>
@@ -1127,7 +1179,7 @@
       <div class="section-icon" style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
       </div>
-      <div class="section-title">Plugins Configurados</div>
+      <div class="section-title" data-i18n="pluginsTitle">Configured plugins</div>
     </div>
     <div id="pluginsContent" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;"></div>
   </div>
@@ -1139,11 +1191,11 @@
       <div class="section-icon" style="background:linear-gradient(135deg,#DBEAFE,#BFDBFE)">
         <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
       </div>
-      <div class="section-title">Recursos do sistema</div>
+      <div class="section-title" data-i18n="resourcesTitle">System resources</div>
     </div>
     <p class="live-note" id="systemLiveNote"></p>
     <div class="live-host-grid" id="systemLiveHost"></div>
-    <p class="live-cpu-hint">CPU por ferramenta é a soma dos processos detectados; em máquinas com vários núcleos essa soma pode passar de 100%. Modelos de LLM só aparecem quando o nome aparece na linha de comando do processo.</p>
+    <p class="live-cpu-hint" data-i18n="resourcesCpuHint">CPU per tool is the sum of detected processes; on multi-core machines this sum can exceed 100%.</p>
     <div class="live-tools-grid" id="systemLiveTools"></div>
   </div>
 
@@ -1157,8 +1209,8 @@
       <button class="drilldown-close" onclick="closeDrilldown()">&times;</button>
     </div>
     <div id="turnChartWrap" style="margin-bottom:20px;display:none">
-      <h3 style="font-size:13px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin:0 0 2px">Cost per turn</h3>
-      <span style="display:block;font-size:11px;color:var(--text-tertiary);margin:0 0 10px;opacity:0.7">Each dot is one turn (your message + Claude's full response). Y-axis shows API-equivalent cost. You don't pay this on a subscription, but it shows how much work each turn requires.</span>
+      <h3 style="font-size:13px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin:0 0 2px" data-i18n="drillCostTitle">Cost per turn</h3>
+      <span style="display:block;font-size:11px;color:var(--text-tertiary);margin:0 0 10px;opacity:0.7" data-i18n="drillCostSub">Each dot is one turn (your message + Claude's full response).</span>
       <canvas id="turnCostChart"></canvas>
     </div>
     <div id="turnChartInsight" style="display:none;margin-bottom:16px;padding:10px 14px;border-radius:8px;background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(244,63,94,0.06));border:1px solid rgba(245,158,11,0.15)">
@@ -1168,25 +1220,110 @@
     <div id="queryList" class="query-list"></div>
   </div>
 
+  <footer class="footer" role="contentinfo">
+    <a href="https://www.npmjs.com/package/tokalytics" target="_blank" rel="noopener noreferrer" data-i18n="footerNpm">npm package</a>
+    <span class="footer-sep" aria-hidden="true"> · </span>
+    <a href="https://www.linkedin.com/in/kaic-murilo-nunes-461238112/" target="_blank" rel="noopener noreferrer" data-i18n="footerLinkedIn">LinkedIn</a>
+  </footer>
+
 </div>
 
-<!-- Share card overlay -->
-<div id="shareOverlay" class="share-overlay" onclick="if(event.target===this)closeShareCard()">
-  <div class="share-modal">
-    <h3>Share your stats</h3>
-    <canvas id="shareCanvas" width="1200" height="630"></canvas>
-    <div class="share-actions">
-      <button class="btn-cancel" onclick="closeShareCard()">Cancel</button>
-      <button class="btn-download" onclick="downloadShareCard()">Download PNG</button>
-    </div>
-  </div>
-</div>
-
+<script src="i18n.js"></script>
 <script>
 let DATA = null;
 let currentSort = { key: 'total', dir: 'desc' };
 let searchQuery = '';
 let systemLiveTimer = null;
+
+const THEME_STORAGE_KEY = 'tokalytics-theme';
+
+function getThemePref() {
+  try {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    if (v === 'light' || v === 'dark' || v === 'system') return v;
+  } catch (_) {}
+  return 'system';
+}
+
+function resolvedDark() {
+  const p = getThemePref();
+  if (p === 'dark') return true;
+  if (p === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function getChartTheme() {
+  const s = getComputedStyle(document.documentElement);
+  return {
+    axis: (s.getPropertyValue('--chart-axis') || '#94A3B8').trim(),
+    grid: (s.getPropertyValue('--chart-grid') || 'rgba(0,0,0,0.04)').trim(),
+    center: (s.getPropertyValue('--chart-center-text') || '#0F172A').trim(),
+    donutStroke: (s.getPropertyValue('--donut-stroke') || '#FFFFFF').trim(),
+  };
+}
+
+function applyThemeFromPref() {
+  document.documentElement.setAttribute('data-theme', resolvedDark() ? 'dark' : 'light');
+  syncThemeToggleUI();
+  if (DATA) {
+    requestAnimationFrame(() => {
+      renderDailyChart();
+      renderModelChart();
+      const dd = document.getElementById('drilldown');
+      if (dd && dd.classList.contains('open') && window._lastDrilldownGrouped) {
+        renderTurnCostChart(window._lastDrilldownGrouped);
+      }
+    });
+  }
+}
+
+const THEME_ICONS = {
+  system: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M8 21h8"/></svg>',
+  light: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  dark: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+};
+
+function themePrefToI18nKey(pref) {
+  if (pref === 'system') return 'themeSystem';
+  if (pref === 'light') return 'themeLight';
+  return 'themeDark';
+}
+
+function syncThemeToggleUI() {
+  const btn = document.getElementById('themeToggleBtn');
+  const icon = document.getElementById('themeToggleIcon');
+  if (!btn || !icon) return;
+  const pref = getThemePref();
+  icon.innerHTML = THEME_ICONS[pref] || THEME_ICONS.system;
+  const label = t(themePrefToI18nKey(pref));
+  btn.title = t('themeBtnTitle', { label: label });
+  btn.setAttribute('aria-label', t('themeBtnAria', { label: label }));
+}
+
+function syncLangToggleUI() {
+  const lang = TokalyticsI18n.getLang();
+  document.querySelectorAll('.lang-btn').forEach(function (b) {
+    b.classList.toggle('lang-btn-active', b.getAttribute('data-lang') === lang);
+  });
+  const gl = document.getElementById('langToggleGroup');
+  if (gl) gl.setAttribute('aria-label', t('langToggleAria'));
+}
+
+function cycleThemePref() {
+  const order = ['system', 'light', 'dark'];
+  let i = order.indexOf(getThemePref());
+  if (i < 0) i = 0;
+  const next = order[(i + 1) % order.length];
+  try { localStorage.setItem(THEME_STORAGE_KEY, next); } catch (_) {}
+  applyThemeFromPref();
+}
+
+function initTheme() {
+  syncThemeToggleUI();
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (getThemePref() === 'system') applyThemeFromPref();
+  });
+}
 
 function initAppNav() {
   const nav = document.getElementById('appNav');
@@ -1200,7 +1337,7 @@ function initAppNav() {
 
 function applyHashPage() {
   const raw = (location.hash || '#overview').replace(/^#/, '');
-  const allowed = ['overview', 'charts', 'insights', 'prompts', 'sessions', 'resources'];
+  const allowed = ['overview', 'charts', 'insights', 'prompts', 'sessions', 'resources', 'plugins'];
   const page = allowed.includes(raw) ? raw : 'overview';
   if (raw && !allowed.includes(raw)) {
     history.replaceState(null, '', '#' + page);
@@ -1239,11 +1376,11 @@ function setActivePage(page, updateHash) {
 }
 
 function fmtBytes(n) {
-  if (n == null || isNaN(n) || n < 0) return '0 B';
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' GB';
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
-  if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
-  return n + ' B';
+  if (n == null || isNaN(n) || n < 0) return '0' + t('fmtUnitB');
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + t('fmtUnitGB');
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + t('fmtUnitMB');
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + t('fmtUnitKB');
+  return n + t('fmtUnitB');
 }
 
 function stopSystemLivePolling() {
@@ -1268,30 +1405,32 @@ async function fetchSystemLive() {
     const res = await fetch('/api/system-live');
     const d = await res.json();
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    if (noteEl && d.note) noteEl.textContent = d.note;
+    if (noteEl) noteEl.textContent = t('resourcesLiveNote');
     const h = d.host || {};
     const cpu = (h.cpuPercent != null && !isNaN(h.cpuPercent)) ? h.cpuPercent.toFixed(1) : '—';
     const memPct = (h.memPercent != null && !isNaN(h.memPercent)) ? h.memPercent.toFixed(1) : '—';
     hostEl.innerHTML = [
-      '<div class="live-host-card"><div class="label">CPU (máquina)</div><div class="value">' + cpu + '%</div><div class="sub">média de todos os núcleos</div></div>',
-      '<div class="live-host-card"><div class="label">Memória em uso</div><div class="value">' + memPct + '%</div><div class="sub">' + fmtBytes(h.memUsedBytes) + ' / ' + fmtBytes(h.memTotalBytes) + '</div></div>',
+      '<div class="live-host-card"><div class="label">' + escapeHtml(t('liveLabelCpu')) + '</div><div class="value">' + cpu + '%</div><div class="sub">' + escapeHtml(t('liveSubCpu')) + '</div></div>',
+      '<div class="live-host-card"><div class="label">' + escapeHtml(t('liveLabelMem')) + '</div><div class="value">' + memPct + '%</div><div class="sub">' + fmtBytes(h.memUsedBytes) + ' / ' + fmtBytes(h.memTotalBytes) + '</div></div>',
     ].join('');
     const tools = d.tools || [];
-    toolsEl.innerHTML = tools.map(function(t) {
-      const models = t.models || [];
-      if (!t.processCount) {
-        return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(t.label) + '</span><span class="live-tool-meta">nenhum processo</span></div><div class="live-empty-tool">Nenhum processo desta ferramenta em execução no momento.</div></div>';
+    toolsEl.innerHTML = tools.map(function (toolRow) {
+      const models = toolRow.models || [];
+      if (!toolRow.processCount) {
+        return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(t('liveNoProc')) + '</span></div><div class="live-empty-tool">' + escapeHtml(t('liveNoProcDetail')) + '</div></div>';
       }
       const rows = models.map(function(m) {
         const cpuM = (m.cpuPercent != null && !isNaN(m.cpuPercent)) ? m.cpuPercent.toFixed(1) + '%' : '—';
-        return '<tr><td>' + escapeHtml(m.key) + '</td><td class="num">' + cpuM + '</td><td class="num">' + fmtBytes(m.rssBytes) + '</td><td class="num">' + (m.processCount || 0) + '</td></tr>';
+        const mk = m.key === 'Outros (ferramenta)' ? t('liveOtherToolBucket') : m.key;
+        return '<tr><td>' + escapeHtml(mk) + '</td><td class="num">' + cpuM + '</td><td class="num">' + fmtBytes(m.rssBytes) + '</td><td class="num">' + (m.processCount || 0) + '</td></tr>';
       }).join('');
-      const sumCpu = (t.cpuPercent != null && !isNaN(t.cpuPercent)) ? t.cpuPercent.toFixed(1) : '—';
-      return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(t.label) + '</span><span class="live-tool-meta">Σ CPU ' + sumCpu + '% · RAM ' + fmtBytes(t.rssBytes) + ' · ' + t.processCount + ' proc.</span></div><table class="live-model-table"><thead><tr><th>Modelo / grupo</th><th class="num">CPU</th><th class="num">RAM</th><th class="num">Proc.</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      const sumCpu = (toolRow.cpuPercent != null && !isNaN(toolRow.cpuPercent)) ? toolRow.cpuPercent.toFixed(1) : '—';
+      const metaLine = t('liveToolMeta', { cpu: sumCpu, ram: fmtBytes(toolRow.rssBytes), n: String(toolRow.processCount || 0) });
+      return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(metaLine) + '</span></div><table class="live-model-table"><thead><tr><th>' + escapeHtml(t('liveThModel')) + '</th><th class="num">' + escapeHtml(t('liveThCpu')) + '</th><th class="num">' + escapeHtml(t('liveThRam')) + '</th><th class="num">' + escapeHtml(t('liveThProc')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }).join('');
   } catch (e) {
     if (noteEl) noteEl.textContent = '';
-    hostEl.innerHTML = '<div class="live-host-card"><div class="label">Erro</div><div class="value" style="font-size:16px">Falha ao ler o sistema</div><div class="sub">' + escapeHtml(e.message) + '</div></div>';
+    hostEl.innerHTML = '<div class="live-host-card"><div class="label">' + escapeHtml(t('liveErr')) + '</div><div class="value" style="font-size:16px">' + escapeHtml(t('liveErrRead')) + '</div><div class="sub">' + escapeHtml(e.message) + '</div></div>';
     toolsEl.innerHTML = '';
   }
 }
@@ -1310,22 +1449,22 @@ async function loadPlugins() {
     function badgeList(items) {
       return items && items.length
         ? items.map(p => `<span class="plugin-badge">${p}</span>`).join('')
-        : '<span class="plugin-empty">Nenhum detectado</span>';
+        : '<span class="plugin-empty">' + escapeHtml(t('pluginsNoneDetected')) + '</span>';
     }
-    function section(label, items, first) {
-      return `<div class="plugin-section-label"${first ? '' : ' style="margin-top:14px"'}>${label}</div>${badgeList(items)}`;
+    function section(labelKey, items, first) {
+      return `<div class="plugin-section-label"${first ? '' : ' style="margin-top:14px"'}>${t(labelKey)}</div>${badgeList(items)}`;
     }
-    el.innerHTML = tools.map(t => {
-      const tool = data[t.key] || {};
+    el.innerHTML = tools.map(row => {
+      const tool = data[row.key] || {};
       let parts = [];
-      if (tool.plugins && tool.plugins.length) parts.push(section('Plugins', tool.plugins, true));
-      if (tool.mcps && tool.mcps.length) parts.push(section('MCPs', tool.mcps, parts.length === 0));
-      if (tool.skills && tool.skills.length) parts.push(section('Skills', tool.skills, parts.length === 0));
-      if (parts.length === 0) parts.push('<span class="plugin-empty">Nenhum item detectado</span>');
-      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${t.label}</div>${parts.join('')}</div>`;
+      if (tool.plugins && tool.plugins.length) parts.push(section('pluginsSectionPlugins', tool.plugins, true));
+      if (tool.mcps && tool.mcps.length) parts.push(section('pluginsSectionMcps', tool.mcps, parts.length === 0));
+      if (tool.skills && tool.skills.length) parts.push(section('pluginsSectionSkills', tool.skills, parts.length === 0));
+      if (parts.length === 0) parts.push('<span class="plugin-empty">' + escapeHtml(t('pluginsNoneItems')) + '</span>');
+      return `<div class="plugin-tool-card"><div class="plugin-tool-title">${row.label}</div>${parts.join('')}</div>`;
     }).join('');
   } catch(e) {
-    document.getElementById('pluginsContent').innerHTML = '<span class="plugin-empty">Erro ao carregar plugins</span>';
+    document.getElementById('pluginsContent').innerHTML = '<span class="plugin-empty">' + escapeHtml(t('pluginsLoadErr')) + '</span>';
   }
 }
 
@@ -1389,29 +1528,42 @@ function escapeHtml(s) {
   const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
 }
 function formatDate(d) {
-  if (!d) return '';
-  const parts = d.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${months[parseInt(parts[1])-1]} ${parseInt(parts[2])}`;
+  return TokalyticsI18n.formatDayMonth(d);
 }
 
 async function fetchData() {
   try {
-    const res = await fetch('/api/data');
+    const [res, healthRes] = await Promise.all([
+      fetch('/api/data'),
+      fetch('/api/health'),
+    ]);
+    const verEl = document.getElementById('appVersion');
+    if (verEl) {
+      if (healthRes.ok) {
+        try {
+          const h = await healthRes.json();
+          verEl.textContent = (h && h.version) ? h.version : '—';
+        } catch {
+          verEl.textContent = '—';
+        }
+      } else {
+        verEl.textContent = '—';
+      }
+    }
     const json = await res.json();
     if (!res.ok || json.error) {
-      showError(json.error || `Server returned ${res.status}`);
+      showError(json.error || (t('errServerPrefix') + res.status));
       return;
     }
     if (!json.totals || !json.sessions) {
-      showError('No session data found. Make sure you have used Claude Code at least once.');
+      showError(t('errNoData'));
       return;
     }
     DATA = json;
     render();
     checkUpdateBanner();
   } catch (err) {
-    showError('Failed to load data: ' + err.message);
+    showError(t('errLoadPrefix') + err.message);
   }
 }
 function showError(msg) {
@@ -1427,22 +1579,22 @@ function showError(msg) {
   const safe = msg.replace(/</g, '&lt;');
   let hint = '';
   if (safe.includes('ENOENT') || safe.includes('not found')) {
-    hint = '<p style="color:#94a3b8;font-size:13px;margin:0 0 20px">Make sure you have used Claude Code at least once. The data directory is created automatically.</p>';
+    hint = '<p style="color:#94a3b8;font-size:13px;margin:0 0 20px">' + escapeHtml(t('errHintClaude')) + '</p>';
   } else if (safe.includes('EPERM') || safe.includes('EACCES') || safe.includes('ermission')) {
-    hint = '<p style="color:#94a3b8;font-size:13px;margin:0 0 20px">Try running with elevated permissions, or check file permissions on your ~/.claude directory.</p>';
+    hint = '<p style="color:#94a3b8;font-size:13px;margin:0 0 20px">' + escapeHtml(t('errHintPerm')) + '</p>';
   }
   el.innerHTML = '<div style="font-size:48px;margin-bottom:16px">&#9888;&#65039;</div>' +
-    '<h2 style="margin:0 0 12px;color:#1a1a2e">Something went wrong</h2>' +
+    '<h2 style="margin:0 0 12px;color:#1a1a2e">' + escapeHtml(t('errTitle')) + '</h2>' +
     '<p style="color:#64748b;margin:0 0 12px;line-height:1.6">' + safe + '</p>' + hint +
-    '<button onclick="location.reload()" style="padding:8px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:14px">Retry</button>';
+    '<button type="button" onclick="location.reload()" style="padding:8px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:14px">' + escapeHtml(t('errRetry')) + '</button>';
 }
 function renderWarnings() {
   const warnings = DATA.warnings || [];
   const banner = document.getElementById('warningsBanner');
   if (!warnings.length) { banner.classList.remove('visible'); return; }
   banner.classList.add('visible');
-  banner.innerHTML = '<button class="warn-close" onclick="this.parentElement.classList.remove(\'visible\')">&times;</button>' +
-    '<strong>Heads up:</strong><ul>' + warnings.map(w => '<li>' + escapeHtml(w.message) + '</li>').join('') + '</ul>';
+  banner.innerHTML = '<button type="button" class="warn-close" onclick="this.parentElement.classList.remove(\'visible\')">&times;</button>' +
+    '<strong>' + escapeHtml(t('warningsHeadsUp')) + '</strong><ul>' + warnings.map(w => '<li>' + escapeHtml(w.message) + '</li>').join('') + '</ul>';
 }
 async function refreshData() {
   document.getElementById('loading').style.display = 'flex';
@@ -1483,27 +1635,28 @@ function renderProviders() {
   }
 
   if (local.totalTokens > 0) {
-    const t = local;
+    const loc = local;
+    const sessWord = loc.sessions !== 1 ? t('providerSessions') : t('providerSession');
     cards.push(`
       <div class="provider-card animate fade-in">
         <div class="provider-header">
-          <span class="provider-name">📁 Local · Hoje</span>
-          <span class="provider-pct" style="color:var(--indigo)">${fmt(t.totalTokens)}</span>
+          <span class="provider-name">📁 ${t('providerLocalToday')}</span>
+          <span class="provider-pct" style="color:var(--indigo)">${fmt(loc.totalTokens)}</span>
         </div>
         <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">
-          ${fmt(t.inputTokens)} in · ${fmt(t.cacheReadTokens)} cached · ${fmt(t.outputTokens)} out
+          ${t('providerInOut', { inn: fmt(loc.inputTokens), cached: fmt(loc.cacheReadTokens), out: fmt(loc.outputTokens) })}
         </div>
-        <div class="provider-reset">$${t.totalCost.toFixed(4)} estimado · ${t.sessions} sess${t.sessions !== 1 ? 'ões' : 'ão'}</div>
+        <div class="provider-reset">${t('providerEstimated', { cost: loc.totalCost.toFixed(4), sessions: String(loc.sessions), sessWord: sessWord })}</div>
       </div>`);
   } else if (!hasCloudProviders) {
     cards.push(`
       <div class="provider-card animate fade-in">
         <div class="provider-header">
-          <span class="provider-name">📁 Local</span>
+          <span class="provider-name">📁 ${t('providerLocal')}</span>
           <span class="provider-pct" style="color:var(--text-tertiary)">—</span>
         </div>
-        <div style="font-size:12px;color:var(--text-tertiary)">Nenhuma sessão encontrada hoje.</div>
-        <div class="provider-reset">Use Claude Code para gerar dados.</div>
+        <div style="font-size:12px;color:var(--text-tertiary)">${t('providerNoSessionsToday')}</div>
+        <div class="provider-reset">${t('providerUseClaude')}</div>
       </div>`);
   }
 
@@ -1512,28 +1665,18 @@ function renderProviders() {
     : '';
 }
 
-function resetCountdown(date) {
-  const secs = Math.max(0, (date - new Date()) / 1000);
-  const m = Math.ceil(secs / 60);
-  if (m < 60) return `em ${m}m`;
-  const h = Math.floor(m / 60), rem = m % 60;
-  if (h < 24) return rem > 0 ? `em ${h}h ${rem}m` : `em ${h}h`;
-  const d = Math.floor(h / 24), rh = h % 24;
-  return rh > 0 ? `em ${d}d ${rh}h` : `em ${d}d`;
-}
-
 function windowBar(w) {
   const pct = Math.min(100, w.pctUsed || 0);
   const left = w.pctLeft != null ? w.pctLeft : 100 - pct;
   const color = pct >= 90 ? 'var(--rose)' : pct >= 70 ? 'var(--amber)' : 'var(--teal)';
   const resetDate = w.resetsAt ? new Date(w.resetsAt) : null;
-  const resetStr = resetDate && resetDate > new Date() ? `Resets ${resetCountdown(resetDate)}` : '';
-  const deficitStr = w.deficit > 0 ? `<span style="color:var(--rose);font-size:11px">${w.deficit.toFixed(0)}% em déficit</span>` : '';
+  const resetStr = resetDate && resetDate > new Date() ? t('windowResetsIn', { s: TokalyticsI18n.fmtResetCountdown(resetDate) }) : '';
+  const deficitStr = w.deficit > 0 ? `<span style="color:var(--rose);font-size:11px">${t('windowDeficit', { n: w.deficit.toFixed(0) })}</span>` : '';
   return `
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-weight:600;font-size:13px">${w.name}</span>
-        <span style="font-size:12px;color:${color};font-weight:600">${left.toFixed(0)}% left</span>
+        <span style="font-size:12px;color:${color};font-weight:600">${t('windowPctLeft', { n: left.toFixed(0) })}</span>
       </div>
       <div class="progress-bg">
         <div class="progress-fill" style="width:${pct}%;background:${color}"></div>
@@ -1553,23 +1696,23 @@ function buildProviderCard(id, usage) {
         const pct = Math.min(100, usage.used || 0);
         const color = pct >= 90 ? 'var(--rose)' : pct >= 70 ? 'var(--amber)' : 'var(--teal)';
         const resetDate = usage.sessionReset ? new Date(usage.sessionReset) : null;
-        const resetStr = resetDate && resetDate > new Date() ? `Resets ${resetCountdown(resetDate)}` : '';
+        const resetStr = resetDate && resetDate > new Date() ? t('windowResetsIn', { s: TokalyticsI18n.fmtResetCountdown(resetDate) }) : '';
         return `
           <div class="progress-bg"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-top:3px">
-            <span>${(100 - pct).toFixed(0)}% left</span><span>${resetStr}</span>
+            <span>${t('windowPctLeft', { n: (100 - pct).toFixed(0) })}</span><span>${resetStr}</span>
           </div>`;
       })();
 
   const costHTML = (usage.todayCostUSD > 0 || usage.last30CostUSD > 0) ? `
     <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">Cost</div>
-      ${usage.todayCostUSD > 0 ? `<div style="font-size:12px;color:var(--text-secondary)">Hoje: <b>$${usage.todayCostUSD.toFixed(2)}</b> · ${fmt(usage.todayTokens)} tokens</div>` : ''}
-      ${usage.last30CostUSD > 0 ? `<div style="font-size:12px;color:var(--text-secondary)">30 dias: <b>$${usage.last30CostUSD.toFixed(2)}</b> · ${fmt(usage.last30Tokens)} tokens</div>` : ''}
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${t('costHeading')}</div>
+      ${usage.todayCostUSD > 0 ? `<div style="font-size:12px;color:var(--text-secondary)">${t('costToday', { usd: '<b>$' + usage.todayCostUSD.toFixed(2) + '</b>', tok: fmt(usage.todayTokens) })}</div>` : ''}
+      ${usage.last30CostUSD > 0 ? `<div style="font-size:12px;color:var(--text-secondary)">${t('cost30d', { usd: '<b>$' + usage.last30CostUSD.toFixed(2) + '</b>', tok: fmt(usage.last30Tokens) })}</div>` : ''}
     </div>` : '';
 
   const meta = [usage.email, usage.plan].filter(Boolean).join(' · ');
-  const updatedAt = usage.updatedAt ? `<span style="font-size:11px;color:var(--text-tertiary)">Atualizado ${usage.updatedAt}</span>` : '';
+  const updatedAt = usage.updatedAt ? `<span style="font-size:11px;color:var(--text-tertiary)">${t('updatedAt', { at: usage.updatedAt })}</span>` : '';
 
   return `
     <div class="provider-card animate fade-in">
@@ -1589,21 +1732,22 @@ function buildProviderCard(id, usage) {
 
 // Stats
 function renderStats() {
-  const t = DATA.totals;
-  const range = t.dateRange ? `${formatDate(t.dateRange.from)} - ${formatDate(t.dateRange.to)}` : '';
+  const tot = DATA.totals;
+  const range = tot.dateRange ? `${formatDate(tot.dateRange.from)} - ${formatDate(tot.dateRange.to)}` : '';
   document.getElementById('dateRange').textContent = range;
 
-  const avgTokensPerMsg = t.totalQueries > 0 ? Math.round(t.totalTokens / t.totalQueries) : 0;
+  const avgTokensPerMsg = tot.totalQueries > 0 ? Math.round(tot.totalTokens / tot.totalQueries) : 0;
 
   const cards = [
-    { label: 'Total Usage', value: fmt(t.totalTokens), sub: `${fmt(t.totalInputTokens)} input · ${fmt(t.totalCacheCreationTokens || 0)} cache writes · ${fmt(t.totalCacheReadTokens || 0)} cache reads · ${fmt(t.totalOutputTokens)} output`,
-      tip: 'All tokens across your conversations. Input = fresh context, cache writes = first-time caching, cache reads = reused from cache (10x cheaper), output = Claude\'s responses.' },
-    { label: 'Conversations', value: fmtFull(t.totalSessions), sub: `Each one used ~${fmt(t.avgTokensPerSession)} tokens on average`,
-      tip: 'Each time you start Claude Code and begin chatting, that counts as one conversation. A new conversation starts fresh with no prior context.' },
-    { label: 'Messages Sent', value: fmtFull(t.totalQueries), sub: `Each message used ~${fmt(avgTokensPerMsg)} tokens on average`,
-      tip: 'Every time you hit Enter and send something to Claude, that is one message. This includes follow-up tool calls Claude makes automatically behind the scenes.' },
-    { label: 'Cache Hit Rate', value: `${((t.cacheHitRate || 0) * 100).toFixed(0)}%`, sub: `${fmt(t.totalCacheReadTokens || 0)} tokens served from cache`,
-      tip: 'The percentage of input tokens that were served from cache instead of being processed fresh. Higher is better -- cached tokens are 10x cheaper and help you stay under rate limits.' },
+    { label: t('statTotalUsage'), value: fmt(tot.totalTokens), sub: t('statSubTokensBreakdown', {
+        input: fmt(tot.totalInputTokens), cw: fmt(tot.totalCacheCreationTokens || 0), cr: fmt(tot.totalCacheReadTokens || 0), out: fmt(tot.totalOutputTokens) }),
+      tip: t('statTotalUsageTip') },
+    { label: t('statConversations'), value: fmtFull(tot.totalSessions), sub: t('statSubAvgSession', { n: fmt(tot.avgTokensPerSession) }),
+      tip: t('statConversationsTip') },
+    { label: t('statMessages'), value: fmtFull(tot.totalQueries), sub: t('statSubAvgMsg', { n: fmt(avgTokensPerMsg) }),
+      tip: t('statMessagesTip') },
+    { label: t('statCacheHit'), value: `${((tot.cacheHitRate || 0) * 100).toFixed(0)}%`, sub: t('statSubCache', { n: fmt(tot.totalCacheReadTokens || 0) }),
+      tip: t('statCacheHitTip') },
   ];
 
   document.getElementById('statsRow').innerHTML = cards.map((c, i) => `
@@ -1669,15 +1813,16 @@ function renderDailyChart() {
   const chartH = h - 36;
   const startX = 48;
 
+  const ct = getChartTheme();
   // Grid
   ctx.font = '500 10px Inter, system-ui';
-  ctx.fillStyle = '#94A3B8';
+  ctx.fillStyle = ct.axis;
   ctx.textAlign = 'right';
   for (let i = 0; i <= 4; i++) {
     const val = (maxTotal / 4) * i;
     const y = chartH - (chartH * i / 4) + 8;
     ctx.fillText(fmt(val), startX - 10, y + 3);
-    ctx.strokeStyle = 'rgba(0,0,0,0.04)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = ct.grid; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(w, y); ctx.stroke();
   }
 
@@ -1737,7 +1882,7 @@ function renderDailyChart() {
   });
 
   // X labels
-  ctx.fillStyle = '#94A3B8'; ctx.textAlign = 'center';
+  ctx.fillStyle = ct.axis; ctx.textAlign = 'center';
   ctx.font = '500 10px Inter, system-ui';
   const step = Math.max(1, Math.floor(data.length / 7));
   data.forEach((d, i) => {
@@ -1813,6 +1958,7 @@ function renderModelChart() {
 
   let angle = -Math.PI / 2;
   const slices = [...data].sort((a, b) => b.totalTokens - a.totalTokens);
+  const ctChart = getChartTheme();
 
   slices.forEach(d => {
     const sa = (d.totalTokens / total) * Math.PI * 2;
@@ -1828,16 +1974,16 @@ function renderModelChart() {
     ctx.fill();
 
     // Gap between slices
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = ctChart.donutStroke; ctx.lineWidth = 2; ctx.stroke();
     angle += sa;
   });
 
-  ctx.fillStyle = '#0F172A'; ctx.textAlign = 'center';
+  ctx.fillStyle = ctChart.center; ctx.textAlign = 'center';
   ctx.font = '800 17px Inter, system-ui';
   ctx.fillText(fmt(total), cx, cy + 2);
   ctx.font = '500 10px Inter, system-ui';
-  ctx.fillStyle = '#94A3B8';
-  ctx.fillText('total', cx, cy + 16);
+  ctx.fillStyle = ctChart.axis;
+  ctx.fillText(t('chartTotalCenter'), cx, cy + 16);
 
   document.getElementById('modelLegend').innerHTML = slices.map(d => {
     const pct = ((d.totalTokens / total) * 100).toFixed(1);
@@ -1859,13 +2005,13 @@ function toggleProjectDrawer(i) {
 
 function buildDrawerContent(p) {
   if (!p.topPrompts || p.topPrompts.length === 0) {
-    return '<div class="drawer-empty">No prompt data available</div>';
+    return '<div class="drawer-empty">' + escapeHtml(t('drawerNoPromptData')) + '</div>';
   }
   const items = p.topPrompts.map((pr, i) => {
     const toolEntries = Object.entries(pr.toolCounts || {}).sort((a, b) => b[1] - a[1]);
     const chips = toolEntries.map(([name, count]) =>
       '<span class="tool-chip">' + count + '\u00d7\u00a0' + escapeHtml(name) + '</span>'
-    ).join('') + (pr.continuations > 0 ? '<span class="tool-chip">+' + pr.continuations + ' turns</span>' : '');
+    ).join('') + (pr.continuations > 0 ? '<span class="tool-chip">' + escapeHtml(t('drawerTurnsExtra', { n: String(pr.continuations) })) + '</span>' : '');
     const badge = '<span class="model-badge ' + modelClass(pr.model) + '"><span class="model-dot"></span>' + modelShort(pr.model) + '</span>';
     const tokVal = fmt(pr.totalTokens);
     const tokSub = fmt(pr.inputTokens) + ' / ' + fmt(pr.outputTokens);
@@ -1891,21 +2037,23 @@ function renderProjectBreakdown() {
   if (!projects || !projects.length) return;
 
   const countEl = document.getElementById('projectsCount');
-  countEl.textContent = projects.length + ' project' + (projects.length === 1 ? '' : 's');
+  countEl.textContent = projects.length === 1 ? t('projectsCountOne') : t('projectsCount', { n: String(projects.length) });
 
   const maxTokens = projects[0].totalTokens;
   const chevron = '<svg class="proj-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l4 4-4 4"/></svg>';
   const rows = [];
   projects.forEach((p, i) => {
     const barPct = (p.totalTokens / maxTokens * 100).toFixed(1);
-    const ariaLabel = p.modelBreakdown.map(m => modelShort(m.model) + ': ' + fmt(m.inputTokens) + ' input, ' + fmt(m.outputTokens) + ' output').join(', ');
+    const ariaLabel = p.modelBreakdown.map(m => modelShort(m.model) + ': ' + t('modelAriaTokenParts', { inn: fmt(m.inputTokens), out: fmt(m.outputTokens) })).join(', ');
+    const srIn = t('legendInput').toLowerCase() + ' ';
+    const srOut = t('legendOutput').toLowerCase() + ' ';
     const pillItems = p.modelBreakdown.map(m =>
       '<li><span class="model-badge ' + modelClass(m.model) +
-      '" aria-label="' + modelShort(m.model) + ': ' + fmt(m.inputTokens) + ' input, ' + fmt(m.outputTokens) + ' output">' +
+      '" aria-label="' + escapeHtml(modelShort(m.model) + ': ' + t('modelAriaTokenParts', { inn: fmt(m.inputTokens), out: fmt(m.outputTokens) })) + '">' +
       '<span class="model-dot" aria-hidden="true"></span>' +
       modelShort(m.model) +
-      ' <span class="token-detail"><span aria-hidden="true">\u2193</span><span class="sr-only">in </span>' + fmt(m.inputTokens) + '</span>' +
-      ' <span class="token-detail"><span aria-hidden="true">\u2191</span><span class="sr-only">out </span>' + fmt(m.outputTokens) + '</span>' +
+      ' <span class="token-detail"><span aria-hidden="true">\u2193</span><span class="sr-only">' + escapeHtml(srIn) + '</span>' + fmt(m.inputTokens) + '</span>' +
+      ' <span class="token-detail"><span aria-hidden="true">\u2191</span><span class="sr-only">' + escapeHtml(srOut) + '</span>' + fmt(m.outputTokens) + '</span>' +
       '</span></li>'
     ).join('');
     const summaryRow = [
@@ -1915,13 +2063,13 @@ function renderProjectBreakdown() {
       chevron,
       '<div>',
       '<div class="proj-name" title="' + projectFull(p.project) + '">' + escapeHtml(projectShort(p.project)) + '</div>',
-      '<ul class="model-pills" aria-label="Models used: ' + ariaLabel + '">' + pillItems + '</ul>',
+      '<ul class="model-pills" aria-label="' + escapeHtml(t('ariaModelsUsed', { list: ariaLabel })) + '">' + pillItems + '</ul>',
       '</div></div></td>',
       '<td class="token-num" style="font-weight:700;vertical-align:top;padding-top:12px">',
       '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">',
       '<div style="flex:1;max-width:60px;height:3px;background:var(--bg);border-radius:4px;overflow:hidden">',
       '<div style="width:' + barPct + '%;height:100%;background:var(--indigo);border-radius:4px"></div>',
-      '</div><div><div>' + fmt(p.totalTokens) + '</div><div style="font-size:11px;font-weight:500;color:var(--text-tertiary);margin-top:1px">' + fmt(p.inputTokens) + ' in\u00a0\u00b7\u00a0' + fmt(p.outputTokens) + ' out</div></div></div></td>',
+      '</div><div><div>' + fmt(p.totalTokens) + '</div><div style="font-size:11px;font-weight:500;color:var(--text-tertiary);margin-top:1px">' + escapeHtml(t('projectRowInOut', { inn: fmt(p.inputTokens), out: fmt(p.outputTokens) })) + '</div></div></div></td>',
       '<td class="token-num" style="vertical-align:top;padding-top:12px">' + p.sessionCount + '</td>',
       '<td class="token-num" style="vertical-align:top;padding-top:12px">' + p.queryCount + '</td>',
       '</tr>',
@@ -1963,7 +2111,7 @@ function renderTopPrompts() {
       </div>
       <div class="prompt-tokens">
         <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--indigo)">${fmt(p.totalTokens)}</div>
-        <div class="sub">${fmt(p.inputTokens)} in / ${fmt(cached)} cached / ${fmt(p.outputTokens)} out</div>
+        <div class="sub">${t('topPromptTok', { inn: fmt(p.inputTokens), cached: fmt(cached), out: fmt(p.outputTokens) })}</div>
       </div>
     </div>`;
   }).join('');
@@ -1993,7 +2141,7 @@ function renderSessions() {
   const fn = sortFns[currentSort.key] || sortFns.total;
   sessions.sort((a, b) => currentSort.dir === 'desc' ? fn(b, a) : fn(a, b));
 
-  document.getElementById('sessionCount').textContent = `${sessions.length} sessions`;
+  document.getElementById('sessionCount').textContent = sessions.length === 1 ? t('sessionsCountOne') : t('sessionsCount', { n: String(sessions.length) });
 
   document.getElementById('sessionsBody').innerHTML = sessions.map(s => `
     <tr onclick="openDrilldown('${s.sessionId}')">
@@ -2084,16 +2232,17 @@ function renderTurnCostChart(grouped) {
   const padL = 52, padR = 16, padT = 12, padB = 28;
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
+  const ctTurn = getChartTheme();
 
   // Grid lines
   ctx.font = '500 10px Inter, system-ui';
-  ctx.fillStyle = '#94A3B8';
+  ctx.fillStyle = ctTurn.axis;
   ctx.textAlign = 'right';
   for (let i = 0; i <= 3; i++) {
     const val = (maxCost / 3) * i;
     const y = padT + chartH - (chartH * i / 3);
     ctx.fillText('$' + val.toFixed(3), padL - 8, y + 3);
-    ctx.strokeStyle = 'rgba(0,0,0,0.04)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = ctTurn.grid; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
   }
 
@@ -2169,7 +2318,7 @@ function renderTurnCostChart(grouped) {
     ctx.fillStyle = '#F59E0B';
     ctx.font = '600 10px Inter, system-ui';
     // Position label: keep it inside chart bounds
-    const labelText = '$' + costs[inflectionIdx].toFixed(2) + ' \u2014 most expensive';
+    const labelText = '$' + costs[inflectionIdx].toFixed(2) + ' \u2014 ' + t('chartMostExpensive');
     const labelWidth = ctx.measureText(labelText).width;
     if (ix + labelWidth / 2 > w - padR) {
       ctx.textAlign = 'right';
@@ -2181,7 +2330,7 @@ function renderTurnCostChart(grouped) {
   }
 
   // X labels
-  ctx.fillStyle = '#94A3B8';
+  ctx.fillStyle = ctTurn.axis;
   ctx.font = '500 10px Inter, system-ui';
   ctx.textAlign = 'center';
   const labelStep = Math.max(1, Math.floor(grouped.length / 8));
@@ -2217,28 +2366,30 @@ function renderDrilldownInsight(grouped, session) {
   let title = '', body = '', bg = '', border = '', color = '';
 
   if (hasSpike) {
-    // Has an expensive spike - explain it and recommend /clear
     const spikeCost = maxTurnCost;
-    title = `\u26A0\uFE0F Turn ${topTurnIdx + 1} cost $${spikeCost.toFixed(2)} \u2014 ${median > 0 ? (spikeCost / median).toFixed(0) + 'x' : 'far'} more than a typical turn`;
-    body = `Median turn cost: $${median.toFixed(4)}. The spike at turn ${topTurnIdx + 1} happened because the context had grown large by that point. Running /clear before expensive turns resets the context and brings costs back down. Tip: if you notice Claude slowing down or you are switching to a different task, that is a good time to /clear.`;
+    title = '\u26A0\uFE0F ' + (median > 0
+      ? t('insightSpikeTitle', { turn: String(topTurnIdx + 1), cost: spikeCost.toFixed(2), ratio: String((spikeCost / median).toFixed(0)) })
+      : t('insightSpikeTitleFar', { turn: String(topTurnIdx + 1), cost: spikeCost.toFixed(2) }));
+    body = t('insightSpikeBody', { median: median.toFixed(4), turn: String(topTurnIdx + 1) });
     bg = 'linear-gradient(135deg,rgba(245,158,11,0.08),rgba(244,63,94,0.06))';
     border = 'rgba(245,158,11,0.15)';
     color = '#D97706';
   } else if (costs.length > 50) {
-    // Long conversation, no big spike
     const lastQuarter = costs.slice(Math.floor(costs.length * 0.75));
     const lastQuarterAvg = lastQuarter.reduce((a, b) => a + b, 0) / lastQuarter.length;
-    title = `\u2139\uFE0F ${costs.length} turns is a long conversation`;
-    body = `Caching kept costs steady (avg ~$${avgCost.toFixed(4)}/turn), but the context window still grew large. Late turns averaged ~$${lastQuarterAvg.toFixed(4)}. Consider splitting into smaller conversations for better focus and lower risk of hitting context limits.`;
+    title = '\u2139\uFE0F ' + t('insightLongTitle', { n: String(costs.length) });
+    body = t('insightLongBody', { avg: avgCost.toFixed(4), late: lastQuarterAvg.toFixed(4) });
     bg = 'linear-gradient(135deg,rgba(99,102,241,0.06),rgba(99,102,241,0.02))';
     border = 'rgba(99,102,241,0.12)';
     color = '#6366F1';
   } else if (costs.length >= 3) {
-    // Normal/healthy
     const totalTokens = session.totalTokens;
     const cacheRate = session.queries ? Math.round(session.queries.reduce((s, q) => s + (q.cacheReadTokens || 0), 0) / Math.max(1, totalTokens) * 100) : 0;
-    title = `\u2705 This conversation was efficient`;
-    body = `${costs.length} turns, avg ~$${avgCost.toFixed(4)}/turn, total ~$${totalCost.toFixed(2)} API-equivalent. ${cacheRate > 50 ? `Cache hit rate: ${cacheRate}% (good).` : cacheRate > 0 ? `Cache hit rate: ${cacheRate}%.` : ''} No issues detected.`;
+    let cacheNote = '';
+    if (cacheRate > 50) cacheNote = t('insightCacheGood', { p: String(cacheRate) });
+    else if (cacheRate > 0) cacheNote = t('insightCacheSome', { p: String(cacheRate) });
+    title = '\u2705 ' + t('insightOkTitle');
+    body = t('insightOkBody', { n: String(costs.length), avg: avgCost.toFixed(4), total: totalCost.toFixed(2), cacheNote: cacheNote });
     bg = 'linear-gradient(135deg,rgba(16,185,129,0.06),rgba(16,185,129,0.02))';
     border = 'rgba(16,185,129,0.12)';
     color = '#059669';
@@ -2262,9 +2413,10 @@ function openDrilldown(sessionId) {
 
   document.getElementById('drilldownTitle').textContent = session.firstPrompt.substring(0, 140);
   document.getElementById('drilldownMeta').textContent =
-    `${formatDate(session.date)} \u00B7 ${modelShort(session.model)} \u00B7 ${session.queryCount} messages \u00B7 ${fmt(session.totalTokens)} tokens`;
+    t('drillMeta', { date: formatDate(session.date), model: modelShort(session.model), n: String(session.queryCount), tok: fmt(session.totalTokens) });
 
   const grouped = groupSessionQueries(session.queries);
+  window._lastDrilldownGrouped = grouped;
 
   // Reset chart canvas before rendering
   const turnCanvas = document.getElementById('turnCostChart');
@@ -2277,14 +2429,14 @@ function openDrilldown(sessionId) {
   renderDrilldownInsight(grouped, session);
 
   document.getElementById('queryList').innerHTML = grouped.map((q, i) => {
-    const cont = q.continuations > 0 ? ` + ${q.continuations} tool uses` : '';
+    const cont = q.continuations > 0 ? t('drillToolUses', { n: String(q.continuations) }) : '';
     const cached = q.cacheReadTokens || 0;
     return `<div class="query-item">
       <div class="query-num">${i + 1}</div>
       <div class="query-prompt">${escapeHtml(q.prompt.substring(0, 500))}</div>
       <div class="query-tokens-col">
         <div class="total">${fmt(q.totalTokens)}</div>
-        <div class="detail">${fmt(q.inputTokens)} in / ${fmt(cached)} cached / ${fmt(q.outputTokens)} out${cont}</div>
+        <div class="detail">${t('topPromptTok', { inn: fmt(q.inputTokens), cached: fmt(cached), out: fmt(q.outputTokens) })}${cont}</div>
       </div>
     </div>`;
   }).join('');
@@ -2298,147 +2450,6 @@ function openDrilldown(sessionId) {
 
 function closeDrilldown() {
   document.getElementById('drilldown').classList.remove('open');
-}
-
-// Share Stats Card
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const words = text.split(' ');
-  let line = '';
-  let lines = 0;
-  for (const word of words) {
-    const test = line + (line ? ' ' : '') + word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, y);
-      line = word;
-      y += lineHeight;
-      lines++;
-      if (lines >= 2) { ctx.fillText(line + '...', x, y); return; }
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, y);
-}
-
-async function generateShareCard() {
-  if (!DATA) return;
-  const t = DATA.totals;
-
-  await document.fonts.ready;
-
-  const canvas = document.getElementById('shareCanvas');
-  const ctx = canvas.getContext('2d');
-  const W = 1200, H = 630;
-  canvas.width = W; canvas.height = H;
-
-  // Background gradient
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#0F172A');
-  bg.addColorStop(1, '#1E293B');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle grid pattern
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-
-  // Accent glow
-  const glow = ctx.createRadialGradient(200, 100, 0, 200, 100, 400);
-  glow.addColorStop(0, 'rgba(99,102,241,0.15)');
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  // Title
-  ctx.fillStyle = '#F8FAFC';
-  ctx.font = '800 42px Inter, system-ui';
-  ctx.fillText('My Claude Code Stats', 60, 80);
-
-  // Date range
-  if (t.dateRange) {
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = '500 18px Inter, system-ui';
-    ctx.fillText(`${t.dateRange.from} to ${t.dateRange.to}`, 60, 116);
-  }
-
-  // Top insight in amber
-  const insights = DATA.insights || [];
-  if (insights.length > 0) {
-    ctx.fillStyle = '#F59E0B';
-    ctx.font = '600 20px Inter, system-ui';
-    wrapText(ctx, insights[0].title, 60, 160, W - 120, 28);
-  }
-
-  // 2x2 Stats grid
-  const stats = [
-    { label: 'Total Tokens', value: fmt(t.totalTokens) },
-    { label: 'Conversations', value: fmtFull(t.totalSessions) },
-    { label: 'Cache Hit Rate', value: ((t.cacheHitRate || 0) * 100).toFixed(0) + '%' },
-    { label: 'Est. API Cost', value: '$' + (t.totalCost || 0).toFixed(2) },
-  ];
-
-  const gridY = 230;
-  const cellW = (W - 120 - 40) / 2;
-  const cellH = 160;
-
-  stats.forEach((s, i) => {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const x = 60 + col * (cellW + 40);
-    const y = gridY + row * (cellH + 20);
-
-    // Card background
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.beginPath();
-    roundedRect(ctx, x, y, cellW, cellH, 16);
-    ctx.fill();
-
-    // Border
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    roundedRect(ctx, x, y, cellW, cellH, 16);
-    ctx.stroke();
-
-    // Label
-    ctx.fillStyle = '#94A3B8';
-    ctx.font = '600 14px Inter, system-ui';
-    ctx.fillText(s.label.toUpperCase(), x + 24, y + 36);
-
-    // Value
-    ctx.fillStyle = '#F8FAFC';
-    ctx.font = '800 48px Inter, system-ui';
-    ctx.fillText(s.value, x + 24, y + 100);
-  });
-
-  // Branding footer
-  const footerY = H - 50;
-  ctx.fillStyle = '#64748B';
-  ctx.font = '500 16px Inter, system-ui';
-  ctx.fillText('claudespend.live', 60, footerY);
-
-  ctx.fillStyle = '#475569';
-  ctx.font = '500 14px Inter, system-ui';
-  ctx.textAlign = 'right';
-  ctx.fillText('npx Tokalytics', W - 60, footerY);
-  ctx.textAlign = 'left';
-
-  // Show overlay
-  document.getElementById('shareOverlay').classList.add('open');
-}
-
-function downloadShareCard() {
-  const canvas = document.getElementById('shareCanvas');
-  const link = document.createElement('a');
-  link.download = 'Tokalytics-stats.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-}
-
-function closeShareCard() {
-  document.getElementById('shareOverlay').classList.remove('open');
 }
 
 async function checkUpdateBanner() {
@@ -2487,28 +2498,36 @@ function copyUpdateCommand() {
   const cmd = cmdEl.textContent || '';
   const prev = btn.textContent;
   navigator.clipboard.writeText(cmd).then(() => {
-    btn.textContent = 'Copiado!';
+    btn.textContent = t('updateCopied');
     setTimeout(() => { btn.textContent = prev; }, 2000);
   }).catch(() => {
-    btn.textContent = 'Selecione e copie';
+    btn.textContent = t('updateCopyManual');
     setTimeout(() => { btn.textContent = prev; }, 2500);
   });
 }
 
+window.__tokalyticsRerender = function () { if (DATA) render(); };
+
 initAppNav();
+initTheme();
+TokalyticsI18n.apply();
 fetchData();
 window.addEventListener('resize', () => {
   if (!DATA) return;
   renderDailyChart();
   renderModelChart();
+  const dd = document.getElementById('drilldown');
+  if (dd && dd.classList.contains('open') && window._lastDrilldownGrouped) {
+    renderTurnCostChart(window._lastDrilldownGrouped);
+  }
 });
 </script>
 <!-- Settings Modal -->
 <div id="settingsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
   <div style="background:#1e1e2e;border-radius:16px;padding:32px;width:480px;max-width:90vw;box-shadow:0 24px 64px rgba(0,0,0,0.4)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
-      <h2 style="color:#fff;font-size:18px;font-weight:700">⚙️ Settings — Providers</h2>
-      <button onclick="closeSettings()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
+      <h2 style="color:#fff;font-size:18px;font-weight:700">⚙️ <span data-i18n="settingsTitle">Settings — providers</span></h2>
+      <button type="button" onclick="closeSettings()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer">✕</button>
     </div>
 
     <div id="settingsStatus" style="margin-bottom:16px"></div>
@@ -2516,10 +2535,10 @@ window.addEventListener('resize', () => {
     <!-- Claude -->
     <div style="margin-bottom:20px">
       <label style="color:#cdd6f4;font-size:13px;font-weight:600;display:block;margin-bottom:6px">
-        🤖 Claude — Cookie de sessão
+        🤖 <span data-i18n="settingsClaudeLabel">Claude — session cookie</span>
       </label>
       <div style="font-size:11px;color:#888;margin-bottom:8px">
-        Abra claude.ai → DevTools (F12) → Application → Cookies → copie o valor de <code style="background:#2a2a3e;padding:1px 4px;border-radius:3px">sessionKey</code>
+        <span data-i18n="settingsClaudeHint">Open claude.ai → DevTools (F12) → Application → Cookies → copy the value of</span> <code style="background:#2a2a3e;padding:1px 4px;border-radius:3px">sessionKey</code>
       </div>
       <textarea id="claudeCookieInput" placeholder="sessionKey=sk-ant-..." rows="2"
         style="width:100%;background:#2a2a3e;color:#cdd6f4;border:1px solid #444;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;resize:vertical"></textarea>
@@ -2529,10 +2548,10 @@ window.addEventListener('resize', () => {
     <!-- Cursor -->
     <div style="margin-bottom:24px">
       <label style="color:#cdd6f4;font-size:13px;font-weight:600;display:block;margin-bottom:6px">
-        🖱️ Cursor — Cookie de sessão
+        🖱️ <span data-i18n="settingsCursorLabel">Cursor — session cookie</span>
       </label>
       <div style="font-size:11px;color:#888;margin-bottom:8px">
-        Abra cursor.com → DevTools → Application → Cookies → copie <code style="background:#2a2a3e;padding:1px 4px;border-radius:3px">WorkosCursorSessionToken</code>
+        <span data-i18n="settingsCursorHint">Open cursor.com → DevTools → Application → Cookies → copy</span> <code style="background:#2a2a3e;padding:1px 4px;border-radius:3px">WorkosCursorSessionToken</code>
       </div>
       <textarea id="cursorCookieInput" placeholder="WorkosCursorSessionToken=..." rows="2"
         style="width:100%;background:#2a2a3e;color:#cdd6f4;border:1px solid #444;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;resize:vertical"></textarea>
@@ -2540,21 +2559,21 @@ window.addEventListener('resize', () => {
     </div>
 
     <div style="margin-bottom:20px;padding:14px;background:#252536;border-radius:10px;border:1px solid #333">
-      <label style="color:#cdd6f4;font-size:13px;font-weight:600;display:block;margin-bottom:8px">🚀 Sistema</label>
+      <label style="color:#cdd6f4;font-size:13px;font-weight:600;display:block;margin-bottom:8px">🚀 <span data-i18n="settingsSystem">System</span></label>
       <div id="httpPortHint" style="font-size:12px;color:#a6adc8;margin-bottom:10px"></div>
       <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:#bac2de;font-size:13px;line-height:1.4">
         <input type="checkbox" id="launchAtLoginCheck" style="margin-top:3px;width:16px;height:16px;accent-color:#8b5cf6" />
-        <span>Iniciar Tokalytics automaticamente ao fazer login neste usuário</span>
+        <span data-i18n="settingsAutostart">Start Tokalytics automatically when this user logs in</span>
       </label>
       <div id="autostartUnsupported" style="display:none;font-size:11px;color:#f38ba8;margin-top:8px"></div>
     </div>
 
     <div style="display:flex;gap:12px">
-      <button onclick="saveSettings()" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
-        Salvar
+      <button type="button" onclick="saveSettings()" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+        <span data-i18n="settingsSave">Save</span>
       </button>
-      <button onclick="clearSettings()" style="background:#2a2a3e;color:#888;border:1px solid #444;padding:12px 16px;border-radius:8px;font-size:13px;cursor:pointer">
-        Limpar tudo
+      <button type="button" onclick="clearSettings()" style="background:#2a2a3e;color:#888;border:1px solid #444;padding:12px 16px;border-radius:8px;font-size:13px;cursor:pointer">
+        <span data-i18n="settingsClear">Clear all</span>
       </button>
     </div>
   </div>
@@ -2563,13 +2582,11 @@ window.addEventListener('resize', () => {
 <script>
 function openSettings() {
   fetch('/api/settings').then(r=>r.json()).then(cfg => {
-    document.getElementById('claudeStatus').textContent = cfg.claudeConfigured ? '✅ Claude configurado' : '⚠️ Não configurado';
-    document.getElementById('cursorStatus').textContent = cfg.cursorConfigured ? '✅ Cursor configurado' : '⚠️ Não configurado';
+    document.getElementById('claudeStatus').textContent = cfg.claudeConfigured ? ('✅ ' + t('settingsClaudeOk')) : ('⚠️ ' + t('settingsClaudeNo'));
+    document.getElementById('cursorStatus').textContent = cfg.cursorConfigured ? ('✅ ' + t('settingsCursorOk')) : ('⚠️ ' + t('settingsCursorNo'));
     const port = cfg.httpPort || 3456;
     const portEl = document.getElementById('httpPortHint');
-    portEl.textContent = port === 3456
-      ? 'Dashboard em http://localhost:3456 (porta padrão).'
-      : 'A porta 3456 estava ocupada; este painel está em http://localhost:' + port + ' .';
+    portEl.textContent = port === 3456 ? t('settingsPortDefault') : t('settingsPortOther', { port: String(port) });
     const chk = document.getElementById('launchAtLoginCheck');
     const unsup = document.getElementById('autostartUnsupported');
     chk.checked = !!cfg.launchAtLogin;
@@ -2579,8 +2596,9 @@ function openSettings() {
     } else {
       chk.disabled = true;
       unsup.style.display = 'block';
-      unsup.textContent = 'Início automático não está disponível neste sistema operacional.';
+      unsup.textContent = t('settingsAutostartNo');
     }
+    TokalyticsI18n.apply();
   });
   document.getElementById('settingsModal').style.display = 'flex';
 }
@@ -2595,7 +2613,7 @@ function saveSettings() {
   const claudeCookie = document.getElementById('claudeCookieInput').value.trim();
   const cursorCookie = document.getElementById('cursorCookieInput').value.trim();
   const launchAtLogin = document.getElementById('launchAtLoginCheck').checked;
-  document.getElementById('settingsStatus').innerHTML = '<div style="color:#cba6f7;font-size:13px">Salvando...</div>';
+  document.getElementById('settingsStatus').innerHTML = '<div style="color:#cba6f7;font-size:13px">' + escapeHtml(t('settingsSaving')) + '</div>';
   fetch('/api/settings', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -2608,13 +2626,13 @@ function saveSettings() {
       return;
     }
     if (res.ok) {
-      document.getElementById('settingsStatus').innerHTML = '<div style="color:#a6e3a1;font-size:13px">✅ Salvo! Atualizando dados...</div>';
+      document.getElementById('settingsStatus').innerHTML = '<div style="color:#a6e3a1;font-size:13px">✅ ' + escapeHtml(t('settingsSaved')) + '</div>';
       setTimeout(() => { closeSettings(); refreshData(); }, 1500);
     } else {
-      document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">Erro ao salvar.</div>';
+      document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">' + escapeHtml(t('settingsSaveErr')) + '</div>';
     }
   }).catch(() => {
-    document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">Erro ao salvar.</div>';
+    document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">' + escapeHtml(t('settingsSaveErr')) + '</div>';
   });
 }
 

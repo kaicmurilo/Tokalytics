@@ -14,8 +14,14 @@ Os dados permanecem na sua máquina; nada é enviado para servidores externos pe
 ### Desenvolvimento (sem gerar binário)
 
 ```bash
-go run main.go
+npm run dev
+# ou:
+go run . -dev
 ```
+
+O flag **`-dev`** (ou a variável **`TOKALYTICS_DEV=1`**) faz o app **ignorar** outra instância já em execução (por exemplo a instalada via `npm install -g`). O dashboard sobe na **próxima porta livre** (ex.: `3457` se `3456` estiver com o app global).
+
+Sem `-dev`, se já existir Tokalytics na faixa de portas, o processo apenas informa a URL e encerra.
 
 ### Build em Go (binário `tokalytics`)
 
@@ -34,7 +40,7 @@ Isso gera o executável `tokalytics` no diretório atual. Para rodar o app após
 ### Atalhos npm (equivalentes)
 
 ```bash
-npm run dev      # go run main.go
+npm run dev      # go run . -dev
 npm run build    # go build -o tokalytics main.go
 npm run start    # compila e em seguida executa ./tokalytics
 ```
@@ -59,12 +65,14 @@ npm install -g "github:kaicmurilo/Tokalytics"
 
 O binário `tokalytics` evita subir uma **segunda** cópia: se já houver uma instância ouvindo nas portas usuais (`3456`–`3555`) e respondendo como Tokalytics, o comando apenas informa a URL e encerra.
 
-| Flag | Efeito |
-|------|--------|
+| Flag / comando | Efeito |
+|----------------|--------|
 | *(nenhuma)* ou `--start` | Inicia menu bar + dashboard se não houver instância; caso contrário, mensagem em stdout. |
+| `--status` | Mostra se há instância rodando, URL, versão da API (`/api/health`) e PID quando o `runstate` bate com a porta. |
 | `--stop` | Encerra a instância em execução (HTTP local `POST /api/shutdown`, só loopback). |
 | `--reload` | Dispara atualização de dados na instância ativa (`GET /api/refresh`). |
-| `--version` / `-v` | Imprime a versão e sai. |
+| `--version`, `-v`, `--v` | Imprime a versão **deste binário** e sai. |
+| `-h`, `--help` ou `tokalytics help` | Lista opções e sai com código 0. |
 
 Estado auxiliar (PID/porta) fica em `~/.config/tokalytics/runstate.json` enquanto o app está rodando; é removido ao sair. Se a porta padrão `3456` estiver ocupada por outro programa, o Tokalytics tenta a próxima livre; use a URL indicada no log ou em **Settings** no dashboard.
 
@@ -80,7 +88,7 @@ Interface web em abas:
 | **Prompts** | Mensagens que mais consumiram tokens |
 | **Sessões** | Lista pesquisável; clique em uma sessão para ver o detalhe (turns, custo por turno) |
 
-Há atalhos para **atualizar dados**, **compartilhar stats** (PNG) e **configurações** (cookies opcionais para APIs em nuvem).
+Há atalhos para **atualizar dados** e **configurações** (cookies opcionais para APIs em nuvem).
 
 ### Aviso de nova versão
 

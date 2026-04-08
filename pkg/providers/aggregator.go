@@ -372,7 +372,7 @@ func generateInsights(sessions []Session, allPrompts []TopPrompt, totals Totals)
 		insights = append(insights, Insight{
 			ID:          "vague-prompts",
 			Type:        "warning",
-			Title:       "Short, vague messages are costing you the most",
+			Title:       "Mensagens curtas e vagas estão custando mais",
 			Description: fmt.Sprintf("%d vezes você enviou uma mensagem curta como %s — e cada mensagem queimou pelo menos 100K tokens. No total: %s tokens.", len(shortExpensive), strings.Join(examples, ", "), fmtTokens(totalWasted)),
 			Action:      `Seja específico. Em vez de "Sim", diga "Sim, atualize a página de login e rode os testes."`,
 		})
@@ -576,9 +576,9 @@ func generateInsights(sessions []Session, allPrompts []TopPrompt, totals Totals)
 			insights = append(insights, Insight{
 				ID:          "tool-heavy",
 				Type:        "info",
-				Title:       fmt.Sprintf("%d conversas tiveram %.0fx mais tool calls que mensagens", len(toolHeavy), avgRatio),
-				Description: fmt.Sprintf("Nessas conversas, o Claude fez ~%.0f tool calls por mensagem enviada. Cada tool call relê toda a conversa. Juntas usaram %s tokens.", avgRatio, fmtTokens(totalToolTokens)),
-				Action:      `Aponte o Claude para arquivos e linhas específicas. "Corrija o bug em src/auth.go linha 42" gera menos tool calls que "corrija o bug de login".`,
+				Title:       fmt.Sprintf("%d conversas tiveram %.0fx mais chamadas de ferramenta que mensagens", len(toolHeavy), avgRatio),
+				Description: fmt.Sprintf("Nessas conversas, o Claude fez ~%.0f chamadas de ferramenta por mensagem enviada. Cada chamada relê toda a conversa. Juntas usaram %s tokens.", avgRatio, fmtTokens(totalToolTokens)),
+				Action:      `Aponte o Claude para arquivos e linhas específicas. "Corrija o bug em src/auth.go linha 42" gera menos chamadas de ferramenta que "corrija o bug de login".`,
 			})
 		}
 	}
@@ -641,7 +641,7 @@ func generateInsights(sessions []Session, allPrompts []TopPrompt, totals Totals)
 						ID:          "conversation-efficiency",
 						Type:        "warning",
 						Title:       fmt.Sprintf("Cada mensagem custa %.1fx mais em conversas longas", ratio),
-						Description: fmt.Sprintf("Em conversas curtas (até 15 msgs), cada mensagem custa ~%s tokens. Em longas (80+ msgs), custa ~%s tokens — %.1fx mais.", fmtTokens(int(shortAvg)), fmtTokens(int(longAvg)), ratio),
+						Description: fmt.Sprintf("Em conversas curtas (até 15 mensagens), cada mensagem custa ~%s tokens. Em longas (80+ mensagens), custa ~%s tokens — %.1fx mais.", fmtTokens(int(shortAvg)), fmtTokens(int(longAvg)), ratio),
 						Action:      "Inicie novas conversas com mais frequência. Um fluxo de 5 conversas custa muito menos que uma maratona de 500 mensagens.",
 					})
 				}
@@ -681,7 +681,7 @@ func generateInsights(sessions []Session, allPrompts []TopPrompt, totals Totals)
 			ID:          "cache-savings",
 			Type:        "info",
 			Title:       fmt.Sprintf("O cache te economizou aproximadamente $%.2f", totals.TotalSaved),
-			Description: fmt.Sprintf("Sua taxa de cache hit é %.1f%%. Sem caching, sua estimativa seria $%.2f em vez de $%.2f. Cache reads acontecem quando o Claude relê partes da conversa que não mudaram.", hitRate, withoutCaching, totals.TotalCost),
+			Description: fmt.Sprintf("Sua taxa de acerto de cache é %.1f%%. Sem cache, sua estimativa seria $%.2f em vez de $%.2f. Leituras de cache ocorrem quando o Claude reutiliza partes da conversa que não mudaram.", hitRate, withoutCaching, totals.TotalCost),
 		})
 	}
 

@@ -16,7 +16,8 @@ const (
 	shutdownPath = "/api/shutdown"
 )
 
-const portMin, portMax = 3456, 3555
+// PortMin e PortMax delimitam a faixa onde o dashboard HTTP do Tokalytics é procurado.
+const PortMin, PortMax = 3456, 3555
 
 var httpClient = &http.Client{Timeout: 800 * time.Millisecond}
 
@@ -25,14 +26,20 @@ type healthBody struct {
 	Version string `json:"version"`
 }
 
-// FindRunning escaneia portas típicas e retorna a porta se responder como Tokalytics.
-func FindRunning() (port int, ok bool) {
-	for p := portMin; p <= portMax; p++ {
-		if ok, _ := checkHealth(p); ok {
-			return p, true
+// RunningInfo retorna porta e versão reportada por /api/health quando o Tokalytics responde.
+func RunningInfo() (port int, apiVersion string, ok bool) {
+	for p := PortMin; p <= PortMax; p++ {
+		if hok, ver := checkHealth(p); hok {
+			return p, ver, true
 		}
 	}
-	return 0, false
+	return 0, "", false
+}
+
+// FindRunning escaneia portas típicas e retorna a porta se responder como Tokalytics.
+func FindRunning() (port int, ok bool) {
+	p, _, ok := RunningInfo()
+	return p, ok
 }
 
 func checkHealth(port int) (ok bool, version string) {
@@ -58,7 +65,7 @@ func checkHealth(port int) (ok bool, version string) {
 
 // PortFromRunstate tenta o port gravado; valida com /api/health.
 func PortFromRunstate(rsPort int) (port int, ok bool) {
-	if rsPort < portMin || rsPort > portMax {
+	if rsPort < PortMin || rsPort > PortMax {
 		return 0, false
 	}
 	ok, _ = checkHealth(rsPort)
