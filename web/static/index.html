@@ -811,7 +811,8 @@
 
   <nav class="app-nav" id="appNav" aria-label="Seções do dashboard">
     <button type="button" class="app-nav-link active" data-page="overview" id="nav-overview">Visão geral</button>
-    <button type="button" class="app-nav-link" data-page="charts" id="nav-charts">Gráficos e insights</button>
+    <button type="button" class="app-nav-link" data-page="charts" id="nav-charts">Gráficos</button>
+    <button type="button" class="app-nav-link" data-page="insights" id="nav-insights">Insights</button>
     <button type="button" class="app-nav-link" data-page="prompts" id="nav-prompts">Prompts</button>
     <button type="button" class="app-nav-link" data-page="sessions" id="nav-sessions">Sessões</button>
   </nav>
@@ -884,20 +885,8 @@
   <div class="stats-row" id="statsRow"></div>
   </div>
 
-  <!-- Página: gráficos e insights -->
+  <!-- Página: gráficos -->
   <div id="page-charts" class="app-page">
-  <!-- Insights -->
-  <div id="insightsSection" class="insights-section" style="display:none">
-    <div class="section-header animate">
-      <div class="section-icon" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a7 7 0 0 1 4 12.75V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.25A7 7 0 0 1 12 2z"/><path d="M9 21h6"/></svg>
-      </div>
-      <div class="section-title">Insights</div>
-    </div>
-    <div id="insightsList"></div>
-  </div>
-
-  <!-- Charts -->
   <div class="charts-grid animate delay-3">
     <div class="chart-card">
       <h3 class="has-tooltip has-tooltip-below" style="display:inline-block">Tokens per Day<div class="tooltip">How many tokens you used each day, broken down by type and cost.</div></h3>
@@ -914,6 +903,23 @@
       <canvas id="modelChart"></canvas>
       <div id="modelLegend" class="legend" style="flex-direction:column; gap:12px; margin-top:20px;"></div>
     </div>
+  </div>
+  </div>
+
+  <!-- Página: insights -->
+  <div id="page-insights" class="app-page">
+  <div id="insightsSection" class="insights-section" style="display:none">
+    <div class="section-header animate">
+      <div class="section-icon" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a7 7 0 0 1 4 12.75V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.25A7 7 0 0 1 12 2z"/><path d="M9 21h6"/></svg>
+      </div>
+      <div class="section-title">Insights</div>
+    </div>
+    <div id="insightsList"></div>
+  </div>
+  <div id="insightsEmpty" class="chart-card animate" style="display:none">
+    <h3 style="margin-bottom:8px">Nenhum insight</h3>
+    <p style="font-size:14px;color:var(--text-secondary);line-height:1.6">Não há recomendações para o período selecionado. Insights aparecem quando há padrões relevantes no uso.</p>
   </div>
   </div>
 
@@ -1018,7 +1024,7 @@ function initAppNav() {
 
 function applyHashPage() {
   const raw = (location.hash || '#overview').replace(/^#/, '');
-  const allowed = ['overview', 'charts', 'prompts', 'sessions'];
+  const allowed = ['overview', 'charts', 'insights', 'prompts', 'sessions'];
   const page = allowed.includes(raw) ? raw : 'overview';
   if (raw && !allowed.includes(raw)) {
     history.replaceState(null, '', '#' + page);
@@ -1042,6 +1048,9 @@ function setActivePage(page, updateHash) {
       renderDailyChart();
       renderModelChart();
     });
+  }
+  if (page === 'insights' && DATA) {
+    requestAnimationFrame(() => renderInsights());
   }
 }
 
@@ -1333,8 +1342,13 @@ function renderStats() {
 function renderInsights() {
   const insights = DATA.insights || [];
   const section = document.getElementById('insightsSection');
-  if (!insights.length) { section.style.display = 'none'; return; }
-
+  const emptyEl = document.getElementById('insightsEmpty');
+  if (!insights.length) {
+    section.style.display = 'none';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
   section.style.display = 'block';
   const icons = { warning: '!', info: 'i', neutral: '~' };
   const emojis = { warning: '\u26A0\uFE0F', info: '\uD83D\uDCA1', neutral: '\uD83D\uDCC5' };

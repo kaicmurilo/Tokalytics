@@ -48,7 +48,8 @@ Interface web em abas:
 | Aba | Conteúdo |
 |-----|----------|
 | **Visão geral** | Hero, quotas (local / provedores), explicação de tokens, totais |
-| **Gráficos e insights** | Insights automáticos, gráfico diário, distribuição por modelo |
+| **Gráficos** | Gráfico diário de tokens, distribuição por modelo |
+| **Insights** | Recomendações automáticas com base no período |
 | **Prompts** | Mensagens que mais consumiram tokens |
 | **Sessões** | Lista pesquisável; clique em uma sessão para ver o detalhe (turns, custo por turno) |
 
