@@ -12,21 +12,22 @@ func (p *GeminiProvider) Name() string { return "Gemini" }
 
 func (p *GeminiProvider) FetchUsage() (*Usage, error) {
 	sessions := ParseGeminiSessions()
-	if len(sessions) == 0 {
-		return nil, fmt.Errorf("gemini: no session data found")
-	}
-
-	today := time.Now().Format("2006-01-02")
+	// even if no sessions, we might have API usage
+	
+	now := time.Now()
+	today := now.Format("2006-01-02")
 
 	var todayTokens, last30Tokens int
 	var todaySessions, totalSessions int
 
 	// 30-day cutoff
-	cutoff := time.Now().AddDate(0, 0, -30)
+	cutoff := now.AddDate(0, 0, -30)
 
 	for _, s := range sessions {
 		totalSessions++
-		if s.Date == today {
+		// Use local time for session date
+		sessionDate := s.StartTime.Local().Format("2006-01-02")
+		if sessionDate == today {
 			todaySessions++
 			todayTokens += s.TotalTokens
 		}
@@ -43,7 +44,17 @@ func (p *GeminiProvider) FetchUsage() (*Usage, error) {
 		TotalLimit: 100,
 	}
 
-	// Show token counts as windows (no % limit — free tier)
+	// 1. Get real API quotas
+	apiWindows, plan, email, _ := fetchGeminiAPIUsage()
+	if plan != "" {
+		u.Plan = plan
+	}
+	if email != "" {
+		u.Email = email
+	}
+	u.Windows = append(u.Windows, apiWindows...)
+
+	// 2. Add local usage stats
 	if todayTokens > 0 || last30Tokens > 0 {
 		u.Windows = append(u.Windows, RateWindow{
 			Name:    fmt.Sprintf("Hoje  %d sess · %s tok", todaySessions, fmtTokens(todayTokens)),

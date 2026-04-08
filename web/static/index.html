@@ -1556,9 +1556,33 @@ function renderModelChart() {
   const cx = size / 2, cy = size / 2, r = Math.max(0, size / 2 - 6), innerR = r * 0.6;
   const total = data.reduce((s, d) => s + d.totalTokens, 0);
 
-  const modelColors = { opus: ['#6366F1','#818CF8'], sonnet: ['#10B981','#34D399'], haiku: ['#F97316','#FB923C'] };
+  const palette = [
+    ['#6366F1','#818CF8'], ['#10B981','#34D399'], ['#F97316','#FB923C'],
+    ['#8B5CF6','#A78BFA'], ['#EC4899','#F472B6'], ['#06B6D4','#2DD4BF'],
+    ['#EAB308','#FBBF24'], ['#3B82F6','#60A5FA'], ['#F43F5E','#FB7185']
+  ];
+  const assignedColors = {};
+  const usedColorIdx = new Set();
+
   function getColors(m) {
-    for (const [k, c] of Object.entries(modelColors)) { if (m.includes(k)) return c; }
+    if (assignedColors[m]) return assignedColors[m];
+
+    let idx = -1;
+    if (m.includes('opus') && !usedColorIdx.has(0)) idx = 0;
+    else if (m.includes('sonnet') && !usedColorIdx.has(1)) idx = 1;
+    else if (m.includes('haiku') && !usedColorIdx.has(2)) idx = 2;
+
+    if (idx === -1) {
+      for (let i = 0; i < palette.length; i++) {
+        if (!usedColorIdx.has(i)) { idx = i; break; }
+      }
+    }
+
+    if (idx !== -1) {
+      usedColorIdx.add(idx);
+      assignedColors[m] = palette[idx];
+      return palette[idx];
+    }
     return ['#94A3B8','#CBD5E1'];
   }
 
