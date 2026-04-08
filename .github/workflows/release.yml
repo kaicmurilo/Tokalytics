@@ -104,7 +104,8 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          npm version "$VERSION" --no-git-tag-version
+          # Sem --allow-same-version, npm falha com "Version not changed" se package.json já = tag.
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
 
       # Exige token granular npm com "Bypass two-factor authentication" ligado;
       # senão o publish falha com EOTP (não dá para passar --otp no CI).
