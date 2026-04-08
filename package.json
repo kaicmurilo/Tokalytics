@@ -13,7 +13,8 @@
     "postinstall": "node scripts/postinstall.js",
     "start": "go build -o tokalytics main.go && ./tokalytics",
     "dev": "go run main.go",
-    "build": "go build -o tokalytics main.go"
+    "build": "go build -o tokalytics main.go",
+    "release:npm": "npm publish --access public"
   },
   "keywords": [
     "claude",
