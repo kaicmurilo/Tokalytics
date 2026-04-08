@@ -6,8 +6,11 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"sort"
 
 	"github.com/getlantern/systray"
 	"github.com/kaicmurilo/tokalytics/pkg/polling"
@@ -102,6 +105,64 @@ func registerProviders() {
 	} else {
 		log.Println("Cursor: nenhum cookie configurado.")
 	}
+}
+
+func readClaudePlugins(home string) []string {
+	path := filepath.Join(home, ".claude", "settings.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	var cfg struct {
+		EnabledPlugins map[string]interface{} `json:"enabledPlugins"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return []string{}
+	}
+	names := make([]string, 0, len(cfg.EnabledPlugins))
+	for k := range cfg.EnabledPlugins {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readCursorMCPs(home string) []string {
+	path := filepath.Join(home, ".cursor", "mcp.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	var cfg struct {
+		McpServers map[string]interface{} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return []string{}
+	}
+	names := make([]string, 0, len(cfg.McpServers))
+	for k := range cfg.McpServers {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readGeminiExtensions(home string) []string {
+	path := filepath.Join(home, ".gemini", "extensions", "extension-enablement.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	var cfg map[string]interface{}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return []string{}
+	}
+	names := make([]string, 0, len(cfg))
+	for k := range cfg {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func startHTTPServer() {
@@ -217,6 +278,21 @@ func startHTTPServer() {
 			"warnings": []map[string]interface{}{},
 		}
 		json.NewEncoder(w).Encode(data)
+	})
+
+	http.HandleFunc("/api/plugins", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			http.Error(w, `{"error":"could not find home dir"}`, 500)
+			return
+		}
+		result := map[string]interface{}{
+			"claude": readClaudePlugins(home),
+			"cursor": readCursorMCPs(home),
+			"gemini": readGeminiExtensions(home),
+		}
+		json.NewEncoder(w).Encode(result)
 	})
 
 	log.Println("Dashboard rodando em http://localhost:3456")
