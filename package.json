@@ -1,6 +1,6 @@
 {
   "name": "tokalytics",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Veja para onde vão seus tokens do Claude Code, Gemini CLI, Cursor e Codex. Reescrito em Go como Tokalytics.",
   "bin": {
     "tokalytics": "bin/run.js"
