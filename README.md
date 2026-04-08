@@ -47,6 +47,8 @@ Na primeira execução o app sobe o **servidor HTTP na porta `3456`** e o ícone
 npm install -g tokalytics
 ```
 
+Em instalação **global**, o `postinstall` tenta **abrir o Tokalytics em segundo plano** (ícone na barra). Para instalar sem iniciar: `TOKALYTICS_NO_AUTOSTART=1 npm install -g tokalytics`.
+
 Instalação a partir do repositório (sempre o `postinstall` da branch atual):
 
 ```bash

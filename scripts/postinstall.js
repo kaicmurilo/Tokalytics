@@ -4,6 +4,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const pkgPath = path.join(__dirname, '..', 'package.json');
 const pkgVersion = (() => {
@@ -127,6 +128,26 @@ function assertReleasePayload(release) {
   }
 }
 
+/** Só em `npm install -g` (npm_config_global). Ignora CI e TOKALYTICS_NO_AUTOSTART=1. */
+function tryLaunchAfterGlobalInstall() {
+  if (process.env.CI === 'true') return false;
+  if (process.env.TOKALYTICS_NO_AUTOSTART === '1') return false;
+  const g = process.env.npm_config_global;
+  if (g !== 'true' && g !== '1') return false;
+  if (!fs.existsSync(BIN_PATH)) return false;
+  try {
+    const child = spawn(BIN_PATH, [], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function install() {
   console.log(`Tokalytics installer v${pkgVersion}: buscando última versão...`);
 
@@ -148,7 +169,13 @@ async function install() {
   fs.chmodSync(BIN_PATH, 0o755);
 
   console.log(`Tokalytics ${version} instalado com sucesso!`);
-  console.log('Execute: tokalytics');
+  if (tryLaunchAfterGlobalInstall()) {
+    console.log(
+      'Tokalytics iniciado em segundo plano (ícone na barra de menus / bandeja).'
+    );
+  } else {
+    console.log('Execute: tokalytics');
+  }
 }
 
 install().catch((err) => {
