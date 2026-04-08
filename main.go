@@ -5,17 +5,20 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/getlantern/systray"
@@ -62,7 +65,8 @@ func main() {
 	reloadF := flag.Bool("reload", false, "Pede atualização de dados na instância em execução")
 	statusF := flag.Bool("status", false, "Mostra se há instância rodando, URL, versão da API e PID (runstate)")
 	devF := flag.Bool("dev", false, "Desenvolvimento: ignora instância já em execução e sobe outra (porta seguinte se 3456 ocupada)")
-	_ = flag.Bool("start", false, "Inicia se ainda não houver instância (equivalente ao app sem flags)")
+	startF := flag.Bool("start", false, "Inicia em segundo plano (sem ocupar o terminal; sem ícone na barra de menu)")
+	headlessF := flag.Bool("headless", false, "Uso interno: só HTTP + polling, sem menu bar")
 	var showVersion bool
 	flag.BoolVar(&showVersion, "version", false, "Mostra a versão deste binário e sai (-v e --v também)")
 	flag.BoolVar(&showVersion, "v", false, "Mostra a versão deste binário e sai (atalho de -version)")
@@ -74,6 +78,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "     tokalytics help\n\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nSem flags: abre o menu bar e o dashboard se ainda não existir instância.\n")
+		fmt.Fprintf(os.Stderr, "Use -start para subir em segundo plano e liberar o terminal.\n")
 		fmt.Fprintf(os.Stderr, "Use -dev (ou TOKALYTICS_DEV=1) para rodar em paralelo ao app instalado.\n")
 	}
 	flag.Parse()
@@ -115,6 +120,25 @@ func main() {
 
 	skipSingleton := *devF || os.Getenv("TOKALYTICS_DEV") == "1" ||
 		strings.EqualFold(os.Getenv("TOKALYTICS_DEV"), "true")
+
+	if *startF {
+		if err := cmdStartBackground(skipSingleton); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	if *headlessF {
+		if !skipSingleton {
+			if port, ok := instancectl.FindRunning(); ok {
+				fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
+				os.Exit(0)
+			}
+		}
+		runHeadless()
+		return
+	}
+
 	if !skipSingleton {
 		if port, ok := instancectl.FindRunning(); ok {
 			fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
@@ -161,6 +185,65 @@ func cmdReload() error {
 	}
 	fmt.Println("Atualização de dados solicitada na instância em execução.")
 	return nil
+}
+
+func cmdStartBackground(devMode bool) error {
+	if !devMode {
+		if port, ok := instancectl.FindRunning(); ok {
+			fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
+			return nil
+		}
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	args := []string{exe}
+	if devMode {
+		args = append(args, "-dev")
+	}
+	args = append(args, "-headless")
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdin = nil
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	setDetachChild(cmd)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("falha ao iniciar em segundo plano: %w", err)
+	}
+	childPID := cmd.Process.Pid
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		rs, err := runstate.Read()
+		if err == nil && rs.PID == childPID && rs.Port > 0 {
+			if _, ok := instancectl.PortFromRunstate(rs.Port); ok {
+				fmt.Printf("Tokalytics iniciado em segundo plano: http://localhost:%d\n", rs.Port)
+				fmt.Fprintf(os.Stderr, "Encerre com: tokalytics --stop\n")
+				return nil
+			}
+		}
+		time.Sleep(120 * time.Millisecond)
+	}
+	return fmt.Errorf("timeout: Tokalytics não respondeu a tempo (tente tokalytics -headless para ver o erro)")
+}
+
+func runHeadless() {
+	registerProviders()
+	polling.Headless = true
+	go startHTTPServer()
+	go polling.Start()
+
+	sigCh := make(chan os.Signal, 1)
+	var sigs []os.Signal
+	sigs = append(sigs, os.Interrupt)
+	if runtime.GOOS != "windows" {
+		sigs = append(sigs, syscall.SIGTERM)
+	}
+	signal.Notify(sigCh, sigs...)
+	<-sigCh
+	log.Println("Encerrando Tokalytics...")
+	runstate.Remove()
+	os.Exit(0)
 }
 
 func cmdStatus() {
@@ -445,6 +528,10 @@ func startHTTPServer() {
 		w.WriteHeader(http.StatusNoContent)
 		go func() {
 			time.Sleep(80 * time.Millisecond)
+			if polling.Headless {
+				runstate.Remove()
+				os.Exit(0)
+			}
 			systray.Quit()
 		}()
 	})

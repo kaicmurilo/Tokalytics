@@ -21,6 +21,8 @@ var (
 	menuMu    sync.Mutex
 	menuSlots []*systray.MenuItem // pre-created display rows
 	slotsReady bool
+	// Headless é true quando não há menu bar (ex.: tokalytics -headless); updateTray não chama systray.
+	Headless bool
 )
 
 // SetMenuSlots must be called from onReady() to register the pre-created items
@@ -123,6 +125,9 @@ func setSlot(idx int, title string) {
 
 func updateTray() {
 	usages := providers.RefreshUsages()
+	if Headless {
+		return
+	}
 
 	if len(usages) == 0 {
 		stats := providers.GetTodayStats()
