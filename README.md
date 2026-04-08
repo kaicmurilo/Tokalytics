@@ -11,16 +11,32 @@ Os dados permanecem na sua máquina; nada é enviado para servidores externos pe
 
 ## Como executar
 
+### Desenvolvimento (sem gerar binário)
+
 ```bash
 go run main.go
 ```
 
-Ou, com npm:
+### Build em Go (binário `tokalytics`)
+
+Na raiz do repositório:
+
+```bash
+go build -o tokalytics main.go
+```
+
+Isso gera o executável `tokalytics` no diretório atual. Para rodar o app após o build:
+
+```bash
+./tokalytics
+```
+
+### Atalhos npm (equivalentes)
 
 ```bash
 npm run dev      # go run main.go
-npm run start    # go build -o tokalytics && ./tokalytics
-npm run build    # só compila o binário tokalytics
+npm run build    # go build -o tokalytics main.go
+npm run start    # compila e em seguida executa ./tokalytics
 ```
 
 Na primeira execução o app sobe o **servidor HTTP na porta `3456`** e o ícone na barra de menus. Use **«Abrir Dashboard»** no menu ou acesse [http://127.0.0.1:3456](http://127.0.0.1:3456).
