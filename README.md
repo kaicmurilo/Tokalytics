@@ -39,7 +39,7 @@ npm run build    # go build -o tokalytics main.go
 npm run start    # compila e em seguida executa ./tokalytics
 ```
 
-Na primeira execução o app sobe o **servidor HTTP na porta `3456`** e o ícone na barra de menus. Use **«Abrir Dashboard»** no menu ou acesse [http://127.0.0.1:3456](http://127.0.0.1:3456).
+Na primeira execução o app sobe o **servidor HTTP** (porta padrão `3456`; se estiver ocupada, usa a próxima livre) e o ícone na barra de menus. Use **«Abrir Dashboard»** no menu ou abra a URL mostrada no terminal.
 
 ### Instalação global pelo npm
 
@@ -55,6 +55,19 @@ Instalação a partir do repositório (sempre o `postinstall` da branch atual):
 npm install -g "github:kaicmurilo/Tokalytics"
 ```
 
+### CLI: instância única e controle
+
+O binário `tokalytics` evita subir uma **segunda** cópia: se já houver uma instância ouvindo nas portas usuais (`3456`–`3555`) e respondendo como Tokalytics, o comando apenas informa a URL e encerra.
+
+| Flag | Efeito |
+|------|--------|
+| *(nenhuma)* ou `--start` | Inicia menu bar + dashboard se não houver instância; caso contrário, mensagem em stdout. |
+| `--stop` | Encerra a instância em execução (HTTP local `POST /api/shutdown`, só loopback). |
+| `--reload` | Dispara atualização de dados na instância ativa (`GET /api/refresh`). |
+| `--version` / `-v` | Imprime a versão e sai. |
+
+Estado auxiliar (PID/porta) fica em `~/.config/tokalytics/runstate.json` enquanto o app está rodando; é removido ao sair. Se a porta padrão `3456` estiver ocupada por outro programa, o Tokalytics tenta a próxima livre; use a URL indicada no log ou em **Settings** no dashboard.
+
 ## Dashboard
 
 Interface web em abas:
@@ -68,6 +81,10 @@ Interface web em abas:
 | **Sessões** | Lista pesquisável; clique em uma sessão para ver o detalhe (turns, custo por turno) |
 
 Há atalhos para **atualizar dados**, **compartilhar stats** (PNG) e **configurações** (cookies opcionais para APIs em nuvem).
+
+### Aviso de nova versão
+
+Em builds com versão **semver** (releases; não `dev`), o dashboard consulta a última release no GitHub e, se houver versão mais nova, mostra um **painel lateral** com o comando `npm install -g tokalytics` (copiar com um clique) e link para a release. O aviso pode ser fechado e não reaparece para a mesma versão alvo até limpar o `localStorage` do site. A resposta do servidor é cacheada por cerca de **1 hora**; use `GITHUB_TOKEN` no ambiente se precisar de limite maior na API do GitHub.
 
 ## Licença
 

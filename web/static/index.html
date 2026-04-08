@@ -746,6 +746,111 @@
   .warnings-banner ul { margin: 4px 0 0 16px; padding: 0; }
   .warnings-banner li { margin-bottom: 2px; }
 
+  /* Atualização — painel lateral (não bloqueia o conteúdo) */
+  .update-slide {
+    position: fixed;
+    top: 88px;
+    right: 0;
+    width: min(308px, calc(100vw - 16px));
+    z-index: 10040;
+    background: var(--white);
+    border: 1px solid var(--border-strong);
+    border-right: none;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    box-shadow: -10px 16px 48px rgba(15, 23, 42, 0.14);
+    padding: 14px 16px 16px 18px;
+    transform: translateX(110%);
+    opacity: 0;
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.32s ease;
+    pointer-events: none;
+  }
+  .update-slide.is-visible {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .update-slide-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .update-slide-dismiss:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+  .update-slide-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 28px 10px 0;
+    letter-spacing: -0.02em;
+  }
+  .update-slide-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin: 0 0 12px;
+  }
+  .update-slide-text strong { color: var(--text); font-weight: 600; }
+  .update-slide-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    margin: 0 0 6px;
+  }
+  .update-slide-cmd {
+    background: #F1F5F9;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    overflow-x: auto;
+  }
+  .update-slide-cmd code {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #0F172A;
+    word-break: break-all;
+    white-space: pre-wrap;
+  }
+  .update-slide-copy {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--gradient-main);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font);
+    box-shadow: 0 2px 10px rgba(99,102,241,0.25);
+    margin-bottom: 8px;
+  }
+  .update-slide-copy:hover { filter: brightness(1.05); }
+  .update-slide-link {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--indigo);
+    text-decoration: none;
+  }
+  .update-slide-link:hover { text-decoration: underline; }
+  @media (max-width: 600px) {
+    .update-slide { top: auto; bottom: 16px; border-radius: var(--radius-sm); border-right: 1px solid var(--border-strong); width: calc(100vw - 24px); right: 12px; }
+  }
+
   /* Share card overlay */
   .share-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5);
@@ -776,9 +881,49 @@
 .plugin-badge { display:inline-block; background:#F5F3FF; border:1px solid #DDD6FE; color:#6D28D9; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:500; margin:3px; }
 .plugin-empty { color:var(--text-secondary); font-size:13px; font-style:italic; }
 .plugin-section-label { font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
+
+  /* Recursos em tempo real */
+  .live-note { font-size:13px; color:var(--text-secondary); line-height:1.55; max-width:720px; margin:0 0 20px; }
+  .live-host-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px;
+  }
+  .live-host-card {
+    background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm); padding:20px;
+    box-shadow:var(--shadow-sm);
+  }
+  .live-host-card .label { font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px; }
+  .live-host-card .value { font-size:26px; font-weight:800; font-family:var(--mono); color:var(--text); letter-spacing:-0.02em; }
+  .live-host-card .sub { font-size:12px; color:var(--text-secondary); margin-top:4px; }
+  .live-tools-grid { display:flex; flex-direction:column; gap:16px; }
+  .live-tool-card {
+    background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm); padding:18px 20px;
+    box-shadow:var(--shadow-sm);
+  }
+  .live-tool-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .live-tool-title { font-size:15px; font-weight:700; color:var(--text); }
+  .live-tool-meta { font-size:12px; color:var(--text-secondary); font-family:var(--mono); }
+  .live-model-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .live-model-table th { text-align:left; font-weight:600; color:var(--text-tertiary); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; padding:8px 10px 8px 0; border-bottom:1px solid var(--border); }
+  .live-model-table td { padding:10px 10px 10px 0; border-bottom:1px solid var(--border); color:var(--text); }
+  .live-model-table td.num { font-family:var(--mono); text-align:right; white-space:nowrap; }
+  .live-model-table tr:last-child td { border-bottom:none; }
+  .live-empty-tool { font-size:13px; color:var(--text-tertiary); font-style:italic; padding:4px 0; }
+  .live-cpu-hint { font-size:11px; color:var(--text-tertiary); margin-top:10px; max-width:640px; line-height:1.45; }
 </style>
 </head>
 <body>
+
+<aside id="updateSlide" class="update-slide" hidden aria-live="polite">
+  <button type="button" class="update-slide-dismiss" onclick="dismissUpdateSlide()" aria-label="Fechar aviso de atualização">×</button>
+  <div class="update-slide-inner">
+    <div class="update-slide-title">Nova versão no GitHub</div>
+    <p class="update-slide-text">A versão <strong id="updateSlideLatest">—</strong> está disponível. Você está na <strong id="updateSlideCurrent">—</strong>.</p>
+    <p class="update-slide-label">Atualizar (npm)</p>
+    <div class="update-slide-cmd"><code id="updateSlideCmd">npm install -g tokalytics</code></div>
+    <button type="button" class="update-slide-copy" id="updateSlideCopy" onclick="copyUpdateCommand()">Copiar comando</button>
+    <a id="updateSlideLink" class="update-slide-link" href="#" target="_blank" rel="noopener noreferrer">Abrir página da release</a>
+  </div>
+</aside>
 
 <div id="loading" class="loading">
   <div class="spinner"></div>
@@ -820,6 +965,7 @@
     <button type="button" class="app-nav-link" data-page="insights" id="nav-insights">Insights</button>
     <button type="button" class="app-nav-link" data-page="prompts" id="nav-prompts">Prompts</button>
     <button type="button" class="app-nav-link" data-page="sessions" id="nav-sessions">Sessões</button>
+    <button type="button" class="app-nav-link" data-page="resources" id="nav-resources">Recursos</button>
     <button type="button" class="app-nav-link" data-page="plugins" id="nav-plugins">Plugins</button>
   </nav>
 
@@ -987,6 +1133,20 @@
   </div>
   </div>
 
+  <!-- Página: recursos em tempo real -->
+  <div id="page-resources" class="app-page">
+    <div class="section-header animate">
+      <div class="section-icon" style="background:linear-gradient(135deg,#DBEAFE,#BFDBFE)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+      </div>
+      <div class="section-title">Recursos do sistema</div>
+    </div>
+    <p class="live-note" id="systemLiveNote"></p>
+    <div class="live-host-grid" id="systemLiveHost"></div>
+    <p class="live-cpu-hint">CPU por ferramenta é a soma dos processos detectados; em máquinas com vários núcleos essa soma pode passar de 100%. Modelos de LLM só aparecem quando o nome aparece na linha de comando do processo.</p>
+    <div class="live-tools-grid" id="systemLiveTools"></div>
+  </div>
+
   <!-- Detalhe da sessão (fora das abas para não duplicar layout) -->
   <div id="drilldown" class="drilldown">
     <div class="drilldown-header">
@@ -1026,6 +1186,7 @@
 let DATA = null;
 let currentSort = { key: 'total', dir: 'desc' };
 let searchQuery = '';
+let systemLiveTimer = null;
 
 function initAppNav() {
   const nav = document.getElementById('appNav');
@@ -1039,7 +1200,7 @@ function initAppNav() {
 
 function applyHashPage() {
   const raw = (location.hash || '#overview').replace(/^#/, '');
-  const allowed = ['overview', 'charts', 'insights', 'prompts', 'sessions'];
+  const allowed = ['overview', 'charts', 'insights', 'prompts', 'sessions', 'resources'];
   const page = allowed.includes(raw) ? raw : 'overview';
   if (raw && !allowed.includes(raw)) {
     history.replaceState(null, '', '#' + page);
@@ -1069,6 +1230,69 @@ function setActivePage(page, updateHash) {
   }
   if (page === 'plugins') {
     loadPlugins();
+  }
+  if (page === 'resources') {
+    startSystemLivePolling();
+  } else {
+    stopSystemLivePolling();
+  }
+}
+
+function fmtBytes(n) {
+  if (n == null || isNaN(n) || n < 0) return '0 B';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' GB';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
+  return n + ' B';
+}
+
+function stopSystemLivePolling() {
+  if (systemLiveTimer) {
+    clearInterval(systemLiveTimer);
+    systemLiveTimer = null;
+  }
+}
+
+function startSystemLivePolling() {
+  stopSystemLivePolling();
+  fetchSystemLive();
+  systemLiveTimer = setInterval(fetchSystemLive, 2200);
+}
+
+async function fetchSystemLive() {
+  const noteEl = document.getElementById('systemLiveNote');
+  const hostEl = document.getElementById('systemLiveHost');
+  const toolsEl = document.getElementById('systemLiveTools');
+  if (!hostEl || !toolsEl) return;
+  try {
+    const res = await fetch('/api/system-live');
+    const d = await res.json();
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (noteEl && d.note) noteEl.textContent = d.note;
+    const h = d.host || {};
+    const cpu = (h.cpuPercent != null && !isNaN(h.cpuPercent)) ? h.cpuPercent.toFixed(1) : '—';
+    const memPct = (h.memPercent != null && !isNaN(h.memPercent)) ? h.memPercent.toFixed(1) : '—';
+    hostEl.innerHTML = [
+      '<div class="live-host-card"><div class="label">CPU (máquina)</div><div class="value">' + cpu + '%</div><div class="sub">média de todos os núcleos</div></div>',
+      '<div class="live-host-card"><div class="label">Memória em uso</div><div class="value">' + memPct + '%</div><div class="sub">' + fmtBytes(h.memUsedBytes) + ' / ' + fmtBytes(h.memTotalBytes) + '</div></div>',
+    ].join('');
+    const tools = d.tools || [];
+    toolsEl.innerHTML = tools.map(function(t) {
+      const models = t.models || [];
+      if (!t.processCount) {
+        return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(t.label) + '</span><span class="live-tool-meta">nenhum processo</span></div><div class="live-empty-tool">Nenhum processo desta ferramenta em execução no momento.</div></div>';
+      }
+      const rows = models.map(function(m) {
+        const cpuM = (m.cpuPercent != null && !isNaN(m.cpuPercent)) ? m.cpuPercent.toFixed(1) + '%' : '—';
+        return '<tr><td>' + escapeHtml(m.key) + '</td><td class="num">' + cpuM + '</td><td class="num">' + fmtBytes(m.rssBytes) + '</td><td class="num">' + (m.processCount || 0) + '</td></tr>';
+      }).join('');
+      const sumCpu = (t.cpuPercent != null && !isNaN(t.cpuPercent)) ? t.cpuPercent.toFixed(1) : '—';
+      return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(t.label) + '</span><span class="live-tool-meta">Σ CPU ' + sumCpu + '% · RAM ' + fmtBytes(t.rssBytes) + ' · ' + t.processCount + ' proc.</span></div><table class="live-model-table"><thead><tr><th>Modelo / grupo</th><th class="num">CPU</th><th class="num">RAM</th><th class="num">Proc.</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }).join('');
+  } catch (e) {
+    if (noteEl) noteEl.textContent = '';
+    hostEl.innerHTML = '<div class="live-host-card"><div class="label">Erro</div><div class="value" style="font-size:16px">Falha ao ler o sistema</div><div class="sub">' + escapeHtml(e.message) + '</div></div>';
+    toolsEl.innerHTML = '';
   }
 }
 
@@ -1185,6 +1409,7 @@ async function fetchData() {
     }
     DATA = json;
     render();
+    checkUpdateBanner();
   } catch (err) {
     showError('Failed to load data: ' + err.message);
   }
@@ -2216,6 +2441,60 @@ function closeShareCard() {
   document.getElementById('shareOverlay').classList.remove('open');
 }
 
+async function checkUpdateBanner() {
+  try {
+    const r = await fetch('/api/update-check');
+    const d = await r.json();
+    if (!d.updateAvailable || !d.latest) return;
+    const key = 'tokalytics-dismiss-update-' + d.latest;
+    if (localStorage.getItem(key)) return;
+    const el = document.getElementById('updateSlide');
+    if (!el) return;
+    document.getElementById('updateSlideLatest').textContent = d.latest;
+    document.getElementById('updateSlideCurrent').textContent = d.current || '?';
+    document.getElementById('updateSlideCmd').textContent = d.installCommand || 'npm install -g tokalytics';
+    el.dataset.dismissKey = key;
+    const link = document.getElementById('updateSlideLink');
+    if (d.releaseUrl) {
+      link.href = d.releaseUrl;
+      link.style.display = 'inline-block';
+    } else {
+      link.style.display = 'none';
+    }
+    el.removeAttribute('hidden');
+    requestAnimationFrame(() => el.classList.add('is-visible'));
+  } catch (_) {}
+}
+
+function dismissUpdateSlide() {
+  const el = document.getElementById('updateSlide');
+  if (!el) return;
+  const key = el.dataset.dismissKey;
+  if (key) localStorage.setItem(key, '1');
+  el.classList.remove('is-visible');
+  function hide(e) {
+    if (e.target !== el || e.propertyName !== 'transform') return;
+    el.setAttribute('hidden', '');
+    el.removeEventListener('transitionend', hide);
+  }
+  el.addEventListener('transitionend', hide);
+}
+
+function copyUpdateCommand() {
+  const cmdEl = document.getElementById('updateSlideCmd');
+  const btn = document.getElementById('updateSlideCopy');
+  if (!cmdEl || !btn) return;
+  const cmd = cmdEl.textContent || '';
+  const prev = btn.textContent;
+  navigator.clipboard.writeText(cmd).then(() => {
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = prev; }, 2000);
+  }).catch(() => {
+    btn.textContent = 'Selecione e copie';
+    setTimeout(() => { btn.textContent = prev; }, 2500);
+  });
+}
+
 initAppNav();
 fetchData();
 window.addEventListener('resize', () => {
@@ -2260,9 +2539,19 @@ window.addEventListener('resize', () => {
       <div id="cursorStatus" style="font-size:11px;margin-top:4px;color:#888"></div>
     </div>
 
+    <div style="margin-bottom:20px;padding:14px;background:#252536;border-radius:10px;border:1px solid #333">
+      <label style="color:#cdd6f4;font-size:13px;font-weight:600;display:block;margin-bottom:8px">🚀 Sistema</label>
+      <div id="httpPortHint" style="font-size:12px;color:#a6adc8;margin-bottom:10px"></div>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:#bac2de;font-size:13px;line-height:1.4">
+        <input type="checkbox" id="launchAtLoginCheck" style="margin-top:3px;width:16px;height:16px;accent-color:#8b5cf6" />
+        <span>Iniciar Tokalytics automaticamente ao fazer login neste usuário</span>
+      </label>
+      <div id="autostartUnsupported" style="display:none;font-size:11px;color:#f38ba8;margin-top:8px"></div>
+    </div>
+
     <div style="display:flex;gap:12px">
       <button onclick="saveSettings()" style="flex:1;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
-        Salvar & Conectar
+        Salvar
       </button>
       <button onclick="clearSettings()" style="background:#2a2a3e;color:#888;border:1px solid #444;padding:12px 16px;border-radius:8px;font-size:13px;cursor:pointer">
         Limpar tudo
@@ -2276,6 +2565,22 @@ function openSettings() {
   fetch('/api/settings').then(r=>r.json()).then(cfg => {
     document.getElementById('claudeStatus').textContent = cfg.claudeConfigured ? '✅ Claude configurado' : '⚠️ Não configurado';
     document.getElementById('cursorStatus').textContent = cfg.cursorConfigured ? '✅ Cursor configurado' : '⚠️ Não configurado';
+    const port = cfg.httpPort || 3456;
+    const portEl = document.getElementById('httpPortHint');
+    portEl.textContent = port === 3456
+      ? 'Dashboard em http://localhost:3456 (porta padrão).'
+      : 'A porta 3456 estava ocupada; este painel está em http://localhost:' + port + ' .';
+    const chk = document.getElementById('launchAtLoginCheck');
+    const unsup = document.getElementById('autostartUnsupported');
+    chk.checked = !!cfg.launchAtLogin;
+    if (cfg.autostartSupported) {
+      chk.disabled = false;
+      unsup.style.display = 'none';
+    } else {
+      chk.disabled = true;
+      unsup.style.display = 'block';
+      unsup.textContent = 'Início automático não está disponível neste sistema operacional.';
+    }
   });
   document.getElementById('settingsModal').style.display = 'flex';
 }
@@ -2289,23 +2594,34 @@ function closeSettings() {
 function saveSettings() {
   const claudeCookie = document.getElementById('claudeCookieInput').value.trim();
   const cursorCookie = document.getElementById('cursorCookieInput').value.trim();
-  if (!claudeCookie && !cursorCookie) {
-    document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">Cole pelo menos um cookie.</div>';
-    return;
-  }
+  const launchAtLogin = document.getElementById('launchAtLoginCheck').checked;
   document.getElementById('settingsStatus').innerHTML = '<div style="color:#cba6f7;font-size:13px">Salvando...</div>';
   fetch('/api/settings', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ claudeCookie, cursorCookie })
-  }).then(r=>r.json()).then(res => {
+    body: JSON.stringify({ claudeCookie, cursorCookie, launchAtLogin })
+  }).then(async r => {
+    let res = {};
+    try { res = await r.json(); } catch (_) {}
+    if (!r.ok && res.error) {
+      document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">' + escapeHtml(res.error) + '</div>';
+      return;
+    }
     if (res.ok) {
       document.getElementById('settingsStatus').innerHTML = '<div style="color:#a6e3a1;font-size:13px">✅ Salvo! Atualizando dados...</div>';
       setTimeout(() => { closeSettings(); refreshData(); }, 1500);
+    } else {
+      document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">Erro ao salvar.</div>';
     }
   }).catch(() => {
     document.getElementById('settingsStatus').innerHTML = '<div style="color:#f38ba8;font-size:13px">Erro ao salvar.</div>';
   });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
 function clearSettings() {

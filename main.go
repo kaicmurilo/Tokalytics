@@ -3,18 +3,28 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"sync/atomic"
+	"time"
 
 	"github.com/getlantern/systray"
+	"github.com/kaicmurilo/tokalytics/pkg/autostart"
+	"github.com/kaicmurilo/tokalytics/pkg/instancectl"
 	"github.com/kaicmurilo/tokalytics/pkg/polling"
 	"github.com/kaicmurilo/tokalytics/pkg/providers"
+	"github.com/kaicmurilo/tokalytics/pkg/runstate"
+	"github.com/kaicmurilo/tokalytics/pkg/sysmon"
+	"github.com/kaicmurilo/tokalytics/pkg/updatecheck"
 	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
@@ -24,8 +34,107 @@ var staticFiles embed.FS
 // Version é definida em releases via ldflags (-X main.Version=...).
 var Version = "dev"
 
+// httpListenPort é a porta efetiva do dashboard (3456+ se a padrão estiver ocupada).
+var httpListenPort atomic.Int32
+
+func dashboardPort() int {
+	p := int(httpListenPort.Load())
+	if p > 0 {
+		return p
+	}
+	return 3456
+}
+
+func listenFrom(basePort, maxAttempts int) (net.Listener, int, error) {
+	for i := 0; i < maxAttempts; i++ {
+		p := basePort + i
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", p))
+		if err == nil {
+			return ln, p, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("nenhuma porta TCP livre entre %d e %d", basePort, basePort+maxAttempts-1)
+}
+
 func main() {
+	stopF := flag.Bool("stop", false, "Encerra a instância em execução (via API local)")
+	reloadF := flag.Bool("reload", false, "Pede atualização de dados na instância em execução")
+	_ = flag.Bool("start", false, "Inicia se ainda não houver instância (equivalente ao app sem flags)")
+	var showVersion bool
+	flag.BoolVar(&showVersion, "version", false, "Mostra a versão e sai")
+	flag.BoolVar(&showVersion, "v", false, "Mostra a versão e sai (atalho)")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Uso: tokalytics [opções]\n\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nSem flags: abre o menu bar e o dashboard se ainda não existir instância.\n")
+	}
+	flag.Parse()
+	if len(flag.Args()) > 0 {
+		fmt.Fprintf(os.Stderr, "argumento inesperado: %q\n\n", flag.Args()[0])
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	if showVersion {
+		fmt.Println(Version)
+		return
+	}
+	if *stopF {
+		if err := cmdStop(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	if *reloadF {
+		if err := cmdReload(); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	if port, ok := instancectl.FindRunning(); ok {
+		fmt.Printf("Tokalytics já está rodando em http://localhost:%d\n", port)
+		os.Exit(0)
+	}
+
 	systray.Run(onReady, onExit)
+}
+
+func resolveInstancePort() int {
+	rs, err := runstate.Read()
+	if err == nil && rs.Port > 0 {
+		if p, ok := instancectl.PortFromRunstate(rs.Port); ok {
+			return p
+		}
+	}
+	if p, ok := instancectl.FindRunning(); ok {
+		return p
+	}
+	return 0
+}
+
+func cmdStop() error {
+	port := resolveInstancePort()
+	if port == 0 {
+		return fmt.Errorf("nenhuma instância Tokalytics em execução foi encontrada")
+	}
+	if err := instancectl.Shutdown(port); err != nil {
+		return err
+	}
+	fmt.Printf("Encerramento solicitado (http://localhost:%d).\n", port)
+	return nil
+}
+
+func cmdReload() error {
+	port := resolveInstancePort()
+	if port == 0 {
+		return fmt.Errorf("nenhuma instância Tokalytics em execução foi encontrada")
+	}
+	if err := instancectl.Reload(port); err != nil {
+		return err
+	}
+	fmt.Println("Atualização de dados solicitada na instância em execução.")
+	return nil
 }
 
 func onReady() {
@@ -57,7 +166,7 @@ func onReady() {
 		for {
 			select {
 			case <-mOpen.ClickedCh:
-				openBrowser("http://localhost:3456")
+				openBrowser(fmt.Sprintf("http://localhost:%d", dashboardPort()))
 			case <-mRefresh.ClickedCh:
 				log.Println("Atualizando dados manualmente...")
 				polling.TriggerUpdate()
@@ -70,6 +179,7 @@ func onReady() {
 
 func onExit() {
 	log.Println("Saindo...")
+	runstate.Remove()
 }
 
 func registerProviders() {
@@ -265,10 +375,48 @@ func startHTTPServer() {
 
 	http.Handle("/", http.FileServer(http.FS(subFS)))
 
+	http.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"service": instancectl.ServiceName,
+			"version": Version,
+		})
+	})
+
+	http.HandleFunc("/api/shutdown", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !instancectl.LoopbackRequest(r) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		go func() {
+			time.Sleep(80 * time.Millisecond)
+			systray.Quit()
+		}()
+	})
+
 	http.HandleFunc("/api/refresh", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Refresh manual solicitado via API")
 		polling.TriggerUpdate()
 		w.WriteHeader(http.StatusOK)
+	})
+
+	http.HandleFunc("/api/update-check", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		res := updatecheck.Check(Version)
+		_ = json.NewEncoder(w).Encode(res)
 	})
 
 	http.HandleFunc("/api/settings", func(w http.ResponseWriter, r *http.Request) {
@@ -276,17 +424,20 @@ func startHTTPServer() {
 		switch r.Method {
 		case http.MethodGet:
 			cfg := utils.LoadSettings()
-			// Mask cookie values for display
 			masked := map[string]interface{}{
-				"claudeConfigured": cfg.ClaudeCookie != "",
-				"cursorConfigured": cfg.CursorCookie != "",
+				"claudeConfigured":     cfg.ClaudeCookie != "",
+				"cursorConfigured":   cfg.CursorCookie != "",
+				"launchAtLogin":      cfg.LaunchAtLogin,
+				"autostartSupported": autostart.Supported(),
+				"httpPort":           dashboardPort(),
 			}
 			json.NewEncoder(w).Encode(masked)
 
 		case http.MethodPost:
 			var body struct {
-				ClaudeCookie string `json:"claudeCookie"`
-				CursorCookie string `json:"cursorCookie"`
+				ClaudeCookie  string `json:"claudeCookie"`
+				CursorCookie  string `json:"cursorCookie"`
+				LaunchAtLogin *bool  `json:"launchAtLogin"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				http.Error(w, `{"error":"invalid json"}`, 400)
@@ -299,11 +450,19 @@ func startHTTPServer() {
 			if body.CursorCookie != "" {
 				cfg.CursorCookie = body.CursorCookie
 			}
+			if body.LaunchAtLogin != nil {
+				if err := autostart.SetEnabled(*body.LaunchAtLogin); err != nil {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+					return
+				}
+				cfg.LaunchAtLogin = *body.LaunchAtLogin
+			}
 			if err := utils.SaveSettings(cfg); err != nil {
 				http.Error(w, `{"error":"failed to save"}`, 500)
 				return
 			}
-			// Re-register providers with new cookies
 			registerProviders()
 			polling.TriggerUpdate()
 			json.NewEncoder(w).Encode(map[string]bool{"ok": true})
@@ -319,6 +478,7 @@ func startHTTPServer() {
 			} else if body.Provider == "cursor" {
 				cfg.CursorCookie = ""
 			} else {
+				_ = autostart.SetEnabled(false)
 				cfg = utils.Settings{}
 			}
 			utils.SaveSettings(cfg)
@@ -372,6 +532,11 @@ func startHTTPServer() {
 		json.NewEncoder(w).Encode(data)
 	})
 
+	http.HandleFunc("/api/system-live", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(sysmon.Collect())
+	})
+
 	http.HandleFunc("/api/plugins", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		home, err := os.UserHomeDir()
@@ -399,8 +564,16 @@ func startHTTPServer() {
 		json.NewEncoder(w).Encode(result)
 	})
 
-	log.Println("Dashboard rodando em http://localhost:3456")
-	if err := http.ListenAndServe(":3456", nil); err != nil {
+	ln, port, err := listenFrom(3456, 100)
+	if err != nil {
+		log.Fatal(err)
+	}
+	httpListenPort.Store(int32(port))
+	if err := runstate.Write(os.Getpid(), port); err != nil {
+		log.Printf("runstate: %v", err)
+	}
+	log.Printf("Dashboard rodando em http://localhost:%d\n", port)
+	if err := http.Serve(ln, nil); err != nil {
 		log.Fatal(err)
 	}
 }

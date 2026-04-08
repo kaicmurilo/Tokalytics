@@ -1,6 +1,6 @@
 {
   "name": "tokalytics",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Veja para onde vão seus tokens do Claude Code, Gemini CLI, Cursor e Codex. Reescrito em Go como Tokalytics.",
   "bin": {
     "tokalytics": "bin/run.js"
@@ -28,7 +28,7 @@
     "golang",
     "tokalytics"
   ],
-  "author": "Aniket Parihar & Kaic Murilo",
+  "author": "Kaic Murilo",
   "license": "MIT",
   "repository": {
     "type": "git",

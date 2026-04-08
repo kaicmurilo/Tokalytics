@@ -7,8 +7,9 @@ import (
 )
 
 type Settings struct {
-	ClaudeCookie string `json:"claudeCookie"`
-	CursorCookie string `json:"cursorCookie"`
+	ClaudeCookie   string `json:"claudeCookie"`
+	CursorCookie   string `json:"cursorCookie"`
+	LaunchAtLogin  bool   `json:"launchAtLogin"`
 }
 
 func settingsPath() string {
