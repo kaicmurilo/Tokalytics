@@ -66,8 +66,10 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    width: 280px;
-    margin-bottom: 20px;
+    width: 100%;
+    max-width: 340px;
+    min-width: 0;
+    flex: 1 1 260px;
   }
   .provider-header {
     display: flex;
@@ -106,6 +108,38 @@
 
   /* Layout */
   .container { max-width: 1200px; margin: 0 auto; padding: 40px 28px 60px; position: relative; z-index: 1; }
+  @media (max-width: 600px) {
+    .container { padding: 20px 14px 48px; }
+  }
+
+  /* App shell — abas / “páginas” */
+  .app-nav {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 24px; padding: 4px 0 18px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 20;
+    background: linear-gradient(to bottom, rgba(248,249,252,0.98) 70%, rgba(248,249,252,0.85) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .app-nav-link {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 16px; border-radius: 12px;
+    font-size: 14px; font-weight: 600; font-family: var(--font);
+    color: var(--text-secondary); cursor: pointer; border: 1px solid transparent;
+    background: transparent; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .app-nav-link:hover { background: var(--white); border-color: var(--border); color: var(--text); }
+  .app-nav-link.active {
+    background: var(--white); color: var(--indigo);
+    border-color: rgba(99,102,241,0.28); box-shadow: var(--shadow-sm);
+  }
+  .app-page { display: none; }
+  .app-page.active { display: block; animation: fadeUp 0.35s ease-out both; }
+  #providersSlot { margin-bottom: 8px; }
+  #providersSlot > .providers-inner {
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
 
   /* Fade-in animation */
   @keyframes fadeUp {
@@ -157,6 +191,7 @@
     gap: 16px; margin-bottom: 32px;
   }
   @media (max-width: 780px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .stats-row { grid-template-columns: 1fr; } }
 
   .stat-card {
     background: var(--white); border-radius: var(--radius);
@@ -296,6 +331,10 @@
   .insight-card.neutral .insight-indicator { background: linear-gradient(135deg, #F1F5F9, #E2E8F0); }
   .insight-title { font-size: 14px; font-weight: 700; line-height: 1.4; }
   .insight-oneliner { font-size: 13px; color: var(--text-secondary); margin-left: auto; white-space: nowrap; font-weight: 500; }
+  @media (max-width: 640px) {
+    .insight-oneliner { white-space: normal; text-align: right; max-width: 45%; }
+    .insight-top { align-items: flex-start; }
+  }
   .insight-expand {
     max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
   }
@@ -357,6 +396,10 @@
   .how-tokens-step {
     display: flex; align-items: baseline; gap: 10px;
     padding: 6px 0; font-size: 13px; color: var(--text-secondary);
+    flex-wrap: wrap;
+  }
+  @media (max-width: 560px) {
+    .step-tokens { flex-basis: 100%; margin-left: 90px; }
   }
   .step-label {
     font-weight: 600; color: var(--text-primary); min-width: 80px; flex-shrink: 0;
@@ -397,6 +440,7 @@
   .legend {
     display: flex; gap: 20px; margin-top: 16px;
     font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    flex-wrap: wrap;
   }
   .legend-item { display: flex; align-items: center; gap: 7px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 4px; flex-shrink: 0; }
@@ -438,6 +482,20 @@
   .token-bar-cache { background: var(--amber); height: 100%; }
   .token-bar-out { background: var(--teal); height: 100%; }
   .prompt-tokens { text-align: right; white-space: nowrap; padding-top: 2px; }
+  @media (max-width: 640px) {
+    .prompt-row {
+      grid-template-columns: 32px 1fr;
+      grid-template-rows: auto auto;
+    }
+    .prompt-tokens {
+      grid-column: 1 / -1;
+      text-align: left;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+      padding-left: 0;
+    }
+  }
   .prompt-tokens .value {
     font-size: 16px; font-weight: 700; font-family: var(--mono);
     letter-spacing: -0.5px;
@@ -497,8 +555,12 @@
   .session-search {
     background: var(--white); border: 1px solid var(--border);
     color: var(--text); padding: 9px 16px; border-radius: 10px;
-    font-size: 14px; font-weight: 500; width: 300px; outline: none;
+    font-size: 14px; font-weight: 500; width: 100%; max-width: 360px; outline: none;
     font-family: var(--font); transition: all 0.2s;
+  }
+  @media (max-width: 640px) {
+    .session-search { max-width: none; }
+    .sessions-toolbar { flex-direction: column; align-items: stretch; }
   }
   .session-search::placeholder { color: var(--text-tertiary); }
   .session-search:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
@@ -508,6 +570,11 @@
     background: var(--white); border-radius: var(--radius);
     border: 1px solid var(--border); box-shadow: var(--shadow-sm);
     overflow: visible;
+  }
+  .sessions-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius);
   }
   .sessions-table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .sessions-table th {
@@ -620,6 +687,18 @@
   .query-prompt { font-size: 14px; font-weight: 500; line-height: 1.5; word-break: break-word; }
   .query-prompt.no-prompt { color: var(--text-tertiary); font-style: italic; font-weight: 400; }
   .query-tokens-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; }
+  @media (max-width: 640px) {
+    .query-item { grid-template-columns: 28px 1fr; }
+    .query-tokens-col {
+      grid-column: 1 / -1;
+      align-items: flex-start;
+      text-align: left;
+      white-space: normal;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      margin-top: 6px;
+    }
+  }
   .query-tokens-col .total { font-family: var(--mono); font-size: 14px; font-weight: 700; }
   .query-tokens-col .detail { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
 
@@ -648,6 +727,11 @@
     background: var(--gradient-main); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
     margin-bottom: 10px; line-height: 1.3;
+  }
+  @media (max-width: 600px) {
+    .hero-title { font-size: 26px; letter-spacing: -0.5px; }
+    .header { flex-direction: column; align-items: flex-start; }
+    .header-right { width: 100%; flex-wrap: wrap; }
   }
   .hero-subtitle {
     font-size: 15px; color: var(--text-secondary); font-weight: 500;
@@ -738,11 +822,22 @@
     </div>
   </div>
 
+  <nav class="app-nav" id="appNav" aria-label="Seções do dashboard">
+    <button type="button" class="app-nav-link active" data-page="overview" id="nav-overview">Visão geral</button>
+    <button type="button" class="app-nav-link" data-page="charts" id="nav-charts">Gráficos e insights</button>
+    <button type="button" class="app-nav-link" data-page="prompts" id="nav-prompts">Prompts</button>
+    <button type="button" class="app-nav-link" data-page="sessions" id="nav-sessions">Sessões</button>
+  </nav>
+
+  <!-- Página: visão geral -->
+  <div id="page-overview" class="app-page active">
   <!-- Value proposition -->
   <div class="hero-section animate delay-1">
     <h2 class="hero-title">Your AI usage, visualized.</h2>
     <p class="hero-subtitle">Real-time quotas and analytics for Claude, Cursor, Gemini & more.</p>
   </div>
+
+  <div id="providersSlot" aria-live="polite"></div>
 
   <!-- How Tokens Work -->
   <div class="how-tokens animate delay-1">
@@ -800,7 +895,10 @@
 
   <!-- Stats -->
   <div class="stats-row" id="statsRow"></div>
+  </div>
 
+  <!-- Página: gráficos e insights -->
+  <div id="page-charts" class="app-page">
   <!-- Insights -->
   <div id="insightsSection" class="insights-section" style="display:none">
     <div class="section-header animate">
@@ -830,9 +928,10 @@
       <div id="modelLegend" class="legend" style="flex-direction:column; gap:12px; margin-top:20px;"></div>
     </div>
   </div>
+  </div>
 
-  <!-- Projects (temporarily hidden - TODO: fix prompt extraction) -->
-
+  <!-- Página: prompts -->
+  <div id="page-prompts" class="app-page">
   <!-- Most Expensive Prompts -->
   <div class="top-prompts animate delay-4">
     <div class="section-header">
@@ -843,8 +942,44 @@
     </div>
     <div class="prompts-card" id="topPromptsList"></div>
   </div>
+  </div>
 
-  <!-- Drill-down -->
+  <!-- Página: sessões -->
+  <div id="page-sessions" class="app-page">
+  <!-- All Sessions -->
+  <div class="sessions-section animate delay-5">
+    <div class="section-header">
+      <div class="section-icon" style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+      </div>
+      <div class="section-title">All Sessions</div>
+    </div>
+    <div class="sessions-toolbar">
+      <input type="text" class="session-search" id="searchInput" placeholder="Search prompts, models, projects...">
+      <span id="sessionCount" class="session-count"></span>
+    </div>
+    <div class="sessions-card">
+      <div class="sessions-table-wrap">
+      <table class="sessions-table">
+        <thead>
+          <tr>
+            <th data-sort="date">Date</th>
+            <th data-sort="prompt">What you asked</th>
+            <th data-sort="model" class="has-tooltip has-tooltip-below">Model<div class="tooltip">Which AI model was used. Opus is the most capable (and uses more tokens), Sonnet is faster and lighter.</div></th>
+            <th data-sort="queries" style="text-align:right" class="has-tooltip has-tooltip-below">Messages<div class="tooltip">How many back-and-forth messages happened in this conversation, including automatic tool calls Claude made.</div></th>
+            <th data-sort="total" style="text-align:right" class="sorted has-tooltip has-tooltip-below">Total tokens<div class="tooltip">The total number of tokens used in this conversation. Higher means more expensive. Long conversations cost more because Claude re-reads everything each turn.</div></th>
+            <th data-sort="input" style="text-align:right" class="has-tooltip has-tooltip-below">Read<div class="tooltip">Tokens Claude read: your messages, the conversation history, files, and system context. This grows with each message because the full history gets re-sent.</div></th>
+            <th data-sort="output" style="text-align:right" class="has-tooltip has-tooltip-below">Written<div class="tooltip">Tokens Claude wrote back: responses, code, explanations. Usually a small fraction of the total.</div></th>
+          </tr>
+        </thead>
+        <tbody id="sessionsBody"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Detalhe da sessão (fora das abas para não duplicar layout) -->
   <div id="drilldown" class="drilldown">
     <div class="drilldown-header">
       <div>
@@ -865,37 +1000,6 @@
     <div id="queryList" class="query-list"></div>
   </div>
 
-  <!-- All Sessions -->
-  <div class="sessions-section animate delay-5">
-    <div class="section-header">
-      <div class="section-icon" style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
-      </div>
-      <div class="section-title">All Sessions</div>
-    </div>
-    <div class="sessions-toolbar">
-      <input type="text" class="session-search" id="searchInput" placeholder="Search prompts, models, projects...">
-      <span id="sessionCount" class="session-count"></span>
-    </div>
-    <div class="sessions-card">
-      <table class="sessions-table">
-        <thead>
-          <tr>
-            <th data-sort="date">Date</th>
-            <th data-sort="prompt">What you asked</th>
-            <th data-sort="model" class="has-tooltip has-tooltip-below">Model<div class="tooltip">Which AI model was used. Opus is the most capable (and uses more tokens), Sonnet is faster and lighter.</div></th>
-            <th data-sort="queries" style="text-align:right" class="has-tooltip has-tooltip-below">Messages<div class="tooltip">How many back-and-forth messages happened in this conversation, including automatic tool calls Claude made.</div></th>
-            <th data-sort="total" style="text-align:right" class="sorted has-tooltip has-tooltip-below">Total tokens<div class="tooltip">The total number of tokens used in this conversation. Higher means more expensive. Long conversations cost more because Claude re-reads everything each turn.</div></th>
-            <th data-sort="input" style="text-align:right" class="has-tooltip has-tooltip-below">Read<div class="tooltip">Tokens Claude read: your messages, the conversation history, files, and system context. This grows with each message because the full history gets re-sent.</div></th>
-            <th data-sort="output" style="text-align:right" class="has-tooltip has-tooltip-below">Written<div class="tooltip">Tokens Claude wrote back: responses, code, explanations. Usually a small fraction of the total.</div></th>
-          </tr>
-        </thead>
-        <tbody id="sessionsBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-
 </div>
 
 <!-- Share card overlay -->
@@ -914,6 +1018,45 @@
 let DATA = null;
 let currentSort = { key: 'total', dir: 'desc' };
 let searchQuery = '';
+
+function initAppNav() {
+  const nav = document.getElementById('appNav');
+  if (!nav) return;
+  nav.querySelectorAll('.app-nav-link').forEach(btn => {
+    btn.addEventListener('click', () => setActivePage(btn.dataset.page));
+  });
+  window.addEventListener('hashchange', applyHashPage);
+  applyHashPage();
+}
+
+function applyHashPage() {
+  const raw = (location.hash || '#overview').replace(/^#/, '');
+  const allowed = ['overview', 'charts', 'prompts', 'sessions'];
+  const page = allowed.includes(raw) ? raw : 'overview';
+  if (raw && !allowed.includes(raw)) {
+    history.replaceState(null, '', '#' + page);
+  }
+  setActivePage(page, false);
+}
+
+function setActivePage(page, updateHash) {
+  if (updateHash !== false) {
+    const next = '#' + page;
+    if (location.hash !== next) history.replaceState(null, '', next);
+  }
+  document.querySelectorAll('.app-page').forEach(p => {
+    p.classList.toggle('active', p.id === 'page-' + page);
+  });
+  document.querySelectorAll('.app-nav-link').forEach(a => {
+    a.classList.toggle('active', a.dataset.page === page);
+  });
+  if (page === 'charts' && DATA) {
+    requestAnimationFrame(() => {
+      renderDailyChart();
+      renderModelChart();
+    });
+  }
+}
 
 function fmt(n) {
   if (n == null || isNaN(n)) return '0';
@@ -1055,27 +1198,18 @@ function render() {
 function renderProviders() {
   const providers = DATA.providers || {};
   const local = DATA.localSummary || {};
-  const header = document.querySelector('.header');
-
-  let container = document.getElementById('providersContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'providersContainer';
-    container.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;padding:0 24px 24px;max-width:1200px;margin:0 auto;';
-    header.after(container);
-  }
+  const slot = document.getElementById('providersSlot');
+  if (!slot) return;
 
   const hasCloudProviders = Object.keys(providers).length > 0;
   const cards = [];
 
-  // Cloud provider quota cards (rich windows)
   if (hasCloudProviders) {
     for (const [id, usage] of Object.entries(providers)) {
       cards.push(buildProviderCard(id, usage));
     }
   }
 
-  // Always show local today card
   if (local.totalTokens > 0) {
     const t = local;
     cards.push(`
@@ -1101,7 +1235,9 @@ function renderProviders() {
       </div>`);
   }
 
-  container.innerHTML = cards.join('');
+  slot.innerHTML = cards.length
+    ? '<div class="providers-inner">' + cards.join('') + '</div>'
+    : '';
 }
 
 function resetCountdown(date) {
@@ -1164,7 +1300,7 @@ function buildProviderCard(id, usage) {
   const updatedAt = usage.updatedAt ? `<span style="font-size:11px;color:var(--text-tertiary)">Atualizado ${usage.updatedAt}</span>` : '';
 
   return `
-    <div class="provider-card animate fade-in" style="min-width:280px;max-width:340px">
+    <div class="provider-card animate fade-in">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
         <div>
           <div class="provider-name">${usage.name || id}</div>
@@ -1241,7 +1377,9 @@ function renderDailyChart() {
   if (!data.length) return;
 
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.parentElement.clientWidth - 48;
+  const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+  const w = parentW - 48;
+  if (w < 16) return;
   const h = 200;
   canvas.width = w * dpr; canvas.height = h * dpr;
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
@@ -1334,8 +1472,8 @@ function renderDailyChart() {
 }
 
 function roundedRect(ctx, x, y, w, h, r) {
-  if (h <= 0) return;
-  r = Math.min(r, h / 2, w / 2);
+  if (h <= 0 || w <= 0) return;
+  r = Math.max(0, Math.min(r, h / 2, w / 2));
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);
   ctx.quadraticCurveTo(x + w, y, x + w, y + r);
@@ -1356,12 +1494,14 @@ function renderModelChart() {
   if (!data.length) return;
 
   const dpr = window.devicePixelRatio || 1;
-  const size = Math.min(180, canvas.parentElement.clientWidth - 48);
+  const parentW = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+  const size = Math.min(180, Math.max(0, parentW - 48));
+  if (size < 40) return;
   canvas.width = size * dpr; canvas.height = size * dpr;
   canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
   ctx.scale(dpr, dpr);
 
-  const cx = size/2, cy = size/2, r = size/2 - 6, innerR = r * 0.6;
+  const cx = size / 2, cy = size / 2, r = Math.max(0, size / 2 - 6), innerR = r * 0.6;
   const total = data.reduce((s, d) => s + d.totalTokens, 0);
 
   const modelColors = { opus: ['#6366F1','#818CF8'], sonnet: ['#10B981','#34D399'], haiku: ['#F97316','#FB923C'] };
@@ -1848,6 +1988,8 @@ function openDrilldown(sessionId) {
     </div>`;
   }).join('');
 
+  setActivePage('sessions', false);
+
   const panel = document.getElementById('drilldown');
   panel.classList.add('open');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1998,8 +2140,13 @@ function closeShareCard() {
   document.getElementById('shareOverlay').classList.remove('open');
 }
 
+initAppNav();
 fetchData();
-window.addEventListener('resize', () => { if (DATA) { renderDailyChart(); renderModelChart(); } });
+window.addEventListener('resize', () => {
+  if (!DATA) return;
+  renderDailyChart();
+  renderModelChart();
+});
 </script>
 <!-- Settings Modal -->
 <div id="settingsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
