@@ -19,12 +19,11 @@ import (
 // browserProfile defines a Chromium-based browser's cookie location and keychain key
 type browserProfile struct {
 	name        string
-	cookieDir   string // relative to ~/Library/Application Support
-	keychainKey string
+	cookieDir   string // relative to ~/Library/Application Support (macOS) or ~/.config (Linux)
+	keychainKey string // macOS Keychain service name (unused on Linux)
 }
 
-var chromiumBrowsers = []browserProfile{
-	// name = Keychain account name, keychainKey = service name
+var chromiumBrowsersMac = []browserProfile{
 	{"Arc", "Arc/User Data", "Arc Safe Storage"},
 	{"Chrome", "Google/Chrome", "Chrome Safe Storage"},
 	{"Brave", "BraveSoftware/Brave-Browser", "Brave Safe Storage"},
@@ -34,38 +33,91 @@ var chromiumBrowsers = []browserProfile{
 	{"Opera", "com.operasoftware.Opera", "Opera Safe Storage"},
 }
 
+// chromiumBrowsersLinux lists profile dirs relative to ~/.config
+var chromiumBrowsersLinux = []browserProfile{
+	{"Chrome", "google-chrome", ""},
+	{"Chromium", "chromium", ""},
+	{"Brave", "BraveSoftware/Brave-Browser", ""},
+	{"Microsoft Edge", "microsoft-edge", ""},
+	{"Vivaldi", "vivaldi", ""},
+	{"Opera", "opera", ""},
+}
+
 var profileDirs = []string{"Default", "Profile 1", "Profile 2", "Profile 3"}
 
-// GetChromeCookie tries all installed Chromium-based browsers on macOS
+// GetChromeCookie tries all installed Chromium-based browsers.
+// macOS: uses Keychain-based AES decryption.
+// Linux: uses the "peanuts" fallback key (Chrome's default when no keyring is available).
 func GetChromeCookie(domain, name string) (string, error) {
-	if runtime.GOOS != "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
+		return getChromeCookieDarwin(domain, name)
+	case "linux":
+		return getChromeCookieLinux(domain, name)
+	default:
 		return "", fmt.Errorf("unsupported OS")
 	}
+}
 
+func getChromeCookieDarwin(domain, name string) (string, error) {
 	home, _ := os.UserHomeDir()
 	appSupport := filepath.Join(home, "Library", "Application Support")
 
 	var lastErr error
-	for _, browser := range chromiumBrowsers {
+	for _, browser := range chromiumBrowsersMac {
 		browserBase := filepath.Join(appSupport, browser.cookieDir)
 		if _, err := os.Stat(browserBase); os.IsNotExist(err) {
 			continue
 		}
 
-		// Get decryption key from Keychain: account=browser.name, service=browser.keychainKey
 		key, err := getChromiumKey(browser.name, browser.keychainKey)
 		if err != nil {
 			lastErr = fmt.Errorf("[%s] keychain: %v", browser.name, err)
 			continue
 		}
 
-		// Try each profile
 		for _, profile := range profileDirs {
 			cookiePath := filepath.Join(browserBase, profile, "Cookies")
 			if _, err := os.Stat(cookiePath); os.IsNotExist(err) {
 				continue
 			}
+			val, err := decryptCookie(cookiePath, domain, name, key)
+			if err == nil && val != "" {
+				return val, nil
+			}
+			if err != nil {
+				lastErr = fmt.Errorf("[%s/%s] %v", browser.name, profile, err)
+			}
+		}
+	}
 
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", fmt.Errorf("cookie not found in any browser")
+}
+
+// getChromeCookieLinux tries Chromium browsers using the "peanuts" fallback key.
+// This works when Chrome runs without GNOME Keyring / KWallet (common in dev setups).
+func getChromeCookieLinux(domain, name string) (string, error) {
+	home, _ := os.UserHomeDir()
+	configDir := filepath.Join(home, ".config")
+
+	// "peanuts" is Chrome's hardcoded fallback password on Linux (1 PBKDF2 iteration).
+	key := pbkdf2.Key([]byte("peanuts"), []byte("saltysalt"), 1, 16, sha1.New)
+
+	var lastErr error
+	for _, browser := range chromiumBrowsersLinux {
+		browserBase := filepath.Join(configDir, browser.cookieDir)
+		if _, err := os.Stat(browserBase); os.IsNotExist(err) {
+			continue
+		}
+
+		for _, profile := range profileDirs {
+			cookiePath := filepath.Join(browserBase, profile, "Cookies")
+			if _, err := os.Stat(cookiePath); os.IsNotExist(err) {
+				continue
+			}
 			val, err := decryptCookie(cookiePath, domain, name, key)
 			if err == nil && val != "" {
 				return val, nil
@@ -97,6 +149,65 @@ func getChromiumKey(browserName, serviceName string) ([]byte, error) {
 	// Derive AES-128 key via PBKDF2-SHA1, 1003 iterations
 	key := pbkdf2.Key([]byte(password), []byte("saltysalt"), 1003, 16, sha1.New)
 	return key, nil
+}
+
+// cursorAppDataDir retorna o diretório de dados do Cursor (Electron) por plataforma.
+func cursorAppDataDir() string {
+	home, _ := os.UserHomeDir()
+	switch runtime.GOOS {
+	case "linux":
+		return filepath.Join(home, ".config", "Cursor")
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "Cursor")
+	case "windows":
+		if appdata := os.Getenv("APPDATA"); appdata != "" {
+			return filepath.Join(appdata, "Cursor")
+		}
+		return filepath.Join(home, "AppData", "Roaming", "Cursor")
+	default:
+		return ""
+	}
+}
+
+// GetCursorAuthToken lê o accessToken do Cursor diretamente do banco SQLite local.
+// Funciona em todas as plataformas sem precisar de cookie manual.
+func GetCursorAuthToken() (string, error) {
+	appDir := cursorAppDataDir()
+	if appDir == "" {
+		return "", fmt.Errorf("unsupported OS")
+	}
+	dbPath := filepath.Join(appDir, "User", "globalStorage", "state.vscdb")
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("cursor db not found: %s", dbPath)
+	}
+
+	// Copia para temp para não travar o arquivo em uso pelo Cursor
+	tmpFile := filepath.Join(os.TempDir(), "tokalytics_cursor_state.db")
+	data, err := os.ReadFile(dbPath)
+	if err != nil {
+		return "", fmt.Errorf("read cursor db: %v", err)
+	}
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
+		return "", fmt.Errorf("write tmp cursor db: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	db, err := sql.Open("sqlite3", tmpFile+"?immutable=1")
+	if err != nil {
+		return "", fmt.Errorf("open cursor db: %v", err)
+	}
+	defer db.Close()
+
+	var token string
+	err = db.QueryRow(`SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken' LIMIT 1`).Scan(&token)
+	if err != nil {
+		return "", fmt.Errorf("cursor accessToken not found: %v", err)
+	}
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", fmt.Errorf("cursor accessToken is empty")
+	}
+	return token, nil
 }
 
 func decryptCookie(cookiePath, domain, name string, key []byte) (string, error) {
@@ -153,17 +264,23 @@ func decryptCookie(cookiePath, domain, name string, key []byte) (string, error) 
 		decrypted = decrypted[:len(decrypted)-pad]
 	}
 
-	// Sanitize: remove null bytes and non-printable chars
+	// Sanitize: keep only printable ASCII (32-126), excluding DEL (0x7F) and non-ASCII.
+	// This ensures the result is valid as an HTTP header value.
 	result := strings.Map(func(r rune) rune {
-		if r == 0 || r > 127 || (r < 32 && r != '\t') {
-			return -1
+		if r >= 32 && r <= 126 {
+			return r
 		}
-		return r
+		return -1
 	}, string(decrypted))
 	result = strings.TrimSpace(result)
 
 	if result == "" {
 		return "", fmt.Errorf("decrypted value is empty after sanitization")
+	}
+	// Sanity check: a valid cookie value should be at least 8 chars and not contain spaces.
+	// Garbage from wrong decryption key tends to look random and often includes spaces.
+	if len(result) < 8 || strings.ContainsAny(result, " \t;,") {
+		return "", fmt.Errorf("decrypted value looks invalid (len=%d)", len(result))
 	}
 	return result, nil
 }

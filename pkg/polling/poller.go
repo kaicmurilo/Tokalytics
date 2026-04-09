@@ -18,8 +18,8 @@ type MenuSlot struct {
 }
 
 var (
-	menuMu    sync.Mutex
-	menuSlots []*systray.MenuItem // pre-created display rows
+	menuMu     sync.Mutex
+	menuSlots  []*systray.MenuItem // pre-created display rows
 	slotsReady bool
 	// Headless é true quando não há menu bar (ex.: tokalytics -headless); updateTray não chama systray.
 	Headless bool
@@ -143,7 +143,7 @@ func updateTray() {
 	}
 
 	// Build compact tray title: just status emojis for each provider
-	providerOrderTitle := []string{"claude", "cursor", "gemini"}
+	providerOrderTitle := []string{"claude", "cursor", "gemini", "codex"}
 	var titleParts []string
 	for _, id := range providerOrderTitle {
 		usage, ok := usages[id]
@@ -193,7 +193,7 @@ func fillSlotsWithData(usages map[string]*providers.Usage) {
 	}
 
 	slot := 0
-	providerOrder := []string{"claude", "cursor", "gemini"}
+	providerOrder := []string{"claude", "cursor", "gemini", "codex"}
 
 	for _, id := range providerOrder {
 		usage, ok := usages[id]

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -81,13 +82,27 @@ func loadClaudeCache() *Usage {
 	return &u
 }
 
-// fetchClaudeOAuth reads the Claude CLI OAuth token from Keychain and calls the OAuth API.
-// This is the same approach used by CodexBar's ClaudeOAuthUsageFetcher.
-func fetchClaudeOAuth() (*Usage, error) {
-	// Read "Claude Code-credentials" from Keychain
-	out, err := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w").Output()
-	if err != nil || len(out) == 0 {
-		return nil, fmt.Errorf("keychain: Claude Code-credentials not found")
+// readClaudeOAuthToken lê o token OAuth do Claude Code.
+// macOS: via Keychain ("Claude Code-credentials").
+// Linux: via ~/.claude/.credentials.json.
+func readClaudeOAuthToken() (string, error) {
+	var raw string
+	switch runtime.GOOS {
+	case "darwin":
+		out, err := exec.Command("security", "find-generic-password", "-s", "Claude Code-credentials", "-w").Output()
+		if err != nil || len(out) == 0 {
+			return "", fmt.Errorf("keychain: Claude Code-credentials not found")
+		}
+		raw = strings.TrimSpace(string(out))
+	case "linux":
+		home, _ := os.UserHomeDir()
+		data, err := os.ReadFile(filepath.Join(home, ".claude", ".credentials.json"))
+		if err != nil {
+			return "", fmt.Errorf("linux credentials: %v", err)
+		}
+		raw = strings.TrimSpace(string(data))
+	default:
+		return "", fmt.Errorf("unsupported OS")
 	}
 
 	var creds struct {
@@ -95,12 +110,20 @@ func fetchClaudeOAuth() (*Usage, error) {
 			AccessToken string `json:"accessToken"`
 		} `json:"claudeAiOauth"`
 	}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(string(out))), &creds); err != nil {
-		return nil, fmt.Errorf("parse credentials: %v", err)
+	if err := json.Unmarshal([]byte(raw), &creds); err != nil {
+		return "", fmt.Errorf("parse credentials: %v", err)
 	}
-	token := creds.ClaudeAiOauth.AccessToken
-	if token == "" {
-		return nil, fmt.Errorf("empty access token")
+	if creds.ClaudeAiOauth.AccessToken == "" {
+		return "", fmt.Errorf("empty access token")
+	}
+	return creds.ClaudeAiOauth.AccessToken, nil
+}
+
+// fetchClaudeOAuth reads the Claude CLI OAuth token and calls the OAuth API.
+func fetchClaudeOAuth() (*Usage, error) {
+	token, err := readClaudeOAuthToken()
+	if err != nil {
+		return nil, err
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}

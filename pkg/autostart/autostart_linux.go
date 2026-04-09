@@ -35,6 +35,6 @@ func platformSet(enable bool, exe string) error {
 	if strings.ContainsAny(exe, " \t\"'\\") {
 		execLine = `"` + strings.ReplaceAll(exe, `"`, `\"`) + `"`
 	}
-	content := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=Tokalytics\nExec=%s\nHidden=false\nX-GNOME-Autostart-enabled=true\n", execLine)
+	content := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=Tokalytics\nExec=%s\nTerminal=false\nHidden=false\nX-GNOME-Autostart-enabled=true\n", execLine)
 	return os.WriteFile(p, []byte(content), 0644)
 }

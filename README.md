@@ -1,6 +1,6 @@
 # Tokalytics
 
-Ferramenta **local** (Go) que agrega uso de tokens e quotas: **menu bar** (system tray) + **dashboard web** para Claude Code, Cursor, Gemini CLI e dados em nuvem (Claude), quando configurado.
+Ferramenta **local** (Go) que agrega uso de tokens e quotas: **menu bar** (system tray) + **dashboard web** para Claude Code, Cursor, Gemini CLI, Codex e dados em nuvem (Claude), quando configurado.
 
 Os dados permanecem na sua máquina; nada é enviado para servidores externos pelo app.
 
@@ -87,6 +87,8 @@ Interface web em abas:
 | **Insights** | Recomendações automáticas com base no período |
 | **Prompts** | Mensagens que mais consumiram tokens |
 | **Sessões** | Lista pesquisável; clique em uma sessão para ver o detalhe (turns, custo por turno) |
+
+O dashboard também detecta **skills/plugins/MCPs** instalados no `Codex` via `~/.codex` e exibe sessões locais gravadas em `~/.codex/sessions`.
 
 Há atalhos para **atualizar dados** e **configurações** (cookies opcionais para APIs em nuvem).
 

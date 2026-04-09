@@ -320,6 +320,15 @@ func Aggregate(sessions []Session) AggregatedData {
 	}
 
 	insights := generateInsights(sessions, allPrompts, totals)
+	if insights == nil {
+		insights = []Insight{}
+	}
+	if sessions == nil {
+		sessions = []Session{}
+	}
+	if topPrompts == nil {
+		topPrompts = []TopPrompt{}
+	}
 
 	return AggregatedData{
 		Sessions:         sessions,

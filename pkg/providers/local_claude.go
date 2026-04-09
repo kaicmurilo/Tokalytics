@@ -166,7 +166,7 @@ func ParseClaudeSessions() []Session {
 
 			filePath := filepath.Join(projectPath, file.Name())
 			sessionID := strings.TrimSuffix(file.Name(), ".jsonl")
-			
+
 			rawEntries, err := ParseJSONLFile(filePath)
 			if err != nil {
 				continue
@@ -239,7 +239,7 @@ func ParseClaudeSessions() []Session {
 			sessions = append(sessions, session)
 		}
 	}
-	
+
 	return sessions
 }
 
@@ -253,6 +253,42 @@ func toInt(v interface{}) int {
 	return 0
 }
 
+// usageNum lê o primeiro campo presente em usage (ordem de preferência).
+func usageNum(usage map[string]interface{}, keys ...string) int {
+	for _, k := range keys {
+		if _, ok := usage[k]; ok {
+			return toInt(usage[k])
+		}
+	}
+	return 0
+}
+
+// cacheCreationInputTokens aceita cache_creation_input_tokens plano ou o objeto aninhado
+// cache_creation do Claude Code recente (ex.: ephemeral_5m_input_tokens).
+func cacheCreationInputTokens(usage map[string]interface{}) int {
+	v := usageNum(usage, "cache_creation_input_tokens", "cacheCreationInputTokens")
+	if v > 0 {
+		return v
+	}
+	cc, ok := usage["cache_creation"].(map[string]interface{})
+	if !ok {
+		cc, ok = usage["cacheCreation"].(map[string]interface{})
+	}
+	if !ok {
+		return 0
+	}
+	sum := 0
+	for _, val := range cc {
+		switch t := val.(type) {
+		case map[string]interface{}:
+			sum += usageNum(t, "input_tokens", "inputTokens")
+		default:
+			sum += toInt(val)
+		}
+	}
+	return sum
+}
+
 func extractQueries(entries []map[string]interface{}) []Query {
 	var queries []Query
 	var pendingPrompt string
@@ -260,13 +296,18 @@ func extractQueries(entries []map[string]interface{}) []Query {
 
 	for _, entry := range entries {
 		entryType, _ := entry["type"].(string)
+		if entryType == "" {
+			entryType, _ = entry["role"].(string)
+		}
+		entryType = strings.ToLower(strings.TrimSpace(entryType))
 		entryTimestamp, _ := entry["timestamp"].(string)
 		isMeta, _ := entry["isMeta"].(bool)
 
 		if entryType == "user" && !isMeta {
 			if msg, ok := entry["message"].(map[string]interface{}); ok {
-				role, _ := msg["role"].(string)
-				if role != "user" {
+				// Claude Code: envelope type=user e message.role=user.
+				// Cursor (Linux): envelope role=user sem message.role — não exigir role interno.
+				if r, ok := msg["role"].(string); ok && strings.ToLower(r) != "user" {
 					continue
 				}
 				switch content := msg["content"].(type) {
@@ -295,27 +336,16 @@ func extractQueries(entries []map[string]interface{}) []Query {
 		if entryType == "assistant" {
 			if msg, ok := entry["message"].(map[string]interface{}); ok {
 				usage, _ := msg["usage"].(map[string]interface{})
+				if usage == nil {
+					usage, _ = entry["usage"].(map[string]interface{})
+				}
 				model, _ := msg["model"].(string)
 
 				if model == "<synthetic>" {
 					continue
 				}
-				if usage == nil {
-					continue
-				}
 
-				input := toInt(usage["input_tokens"])
-				output := toInt(usage["output_tokens"])
-				cacheWrite := toInt(usage["cache_creation_input_tokens"])
-				cacheRead := toInt(usage["cache_read_input_tokens"])
-
-				pricing := getPricing(model)
-				cost := float64(input)*pricing.input +
-					float64(cacheWrite)*pricing.cacheWrite +
-					float64(cacheRead)*pricing.cacheRead +
-					float64(output)*pricing.output
-
-				// Extract tool names
+				// Extract tool names (Claude tool_use; Cursor pode usar nomes diferentes no futuro)
 				var tools []string
 				if contentArr, ok := msg["content"].([]interface{}); ok {
 					for _, b := range contentArr {
@@ -328,6 +358,38 @@ func extractQueries(entries []map[string]interface{}) []Query {
 						}
 					}
 				}
+
+				if usage == nil {
+					// Transcripts do Cursor no Linux costumam não persistir usage por turno;
+					// ainda registramos a troca para listar sessões e prompts (tokens = 0).
+					if pendingPrompt == "" {
+						continue
+					}
+					if model == "" {
+						model = "cursor-transcript"
+					}
+					queries = append(queries, Query{
+						UserPrompt:         pendingPrompt,
+						UserTimestamp:      pendingTimestamp,
+						AssistantTimestamp: entryTimestamp,
+						Model:              model,
+						Tools:              tools,
+					})
+					pendingPrompt = ""
+					pendingTimestamp = ""
+					continue
+				}
+
+				input := usageNum(usage, "input_tokens", "inputTokens")
+				output := usageNum(usage, "output_tokens", "outputTokens")
+				cacheWrite := cacheCreationInputTokens(usage)
+				cacheRead := usageNum(usage, "cache_read_input_tokens", "cacheReadInputTokens")
+
+				pricing := getPricing(model)
+				cost := float64(input)*pricing.input +
+					float64(cacheWrite)*pricing.cacheWrite +
+					float64(cacheRead)*pricing.cacheRead +
+					float64(output)*pricing.output
 
 				q := Query{
 					UserPrompt:          pendingPrompt,
@@ -362,7 +424,7 @@ type TodayStats struct {
 	CacheReadTokens     int     `json:"cacheReadTokens"`
 }
 
-// GetTodayStats parses local Claude sessions and returns today's totals
+// GetTodayStats agrega sessões locais (Claude Code + Cursor) do dia corrente.
 func GetTodayStats() TodayStats {
 	today := time.Now().Format("2006-01-02")
 	var stats TodayStats
@@ -378,10 +440,37 @@ func GetTodayStats() TodayStats {
 		stats.CacheCreationTokens += s.CacheCreationTokens
 		stats.CacheReadTokens += s.CacheReadTokens
 	}
+	for _, s := range ParseCursorSessions() {
+		if s.Date != today {
+			continue
+		}
+		stats.Sessions++
+		stats.TotalTokens += s.TotalTokens
+		stats.TotalCost += s.Cost
+		stats.InputTokens += s.InputTokens
+		stats.OutputTokens += s.OutputTokens
+		stats.CacheCreationTokens += s.CacheCreationTokens
+		stats.CacheReadTokens += s.CacheReadTokens
+	}
+	for _, s := range ParseCodexSessions() {
+		if s.Date != today {
+			continue
+		}
+		stats.Sessions++
+		stats.TotalTokens += s.TotalTokens
+		stats.TotalCost += s.Cost
+		stats.InputTokens += s.InputTokens
+		stats.OutputTokens += s.OutputTokens
+		stats.CacheCreationTokens += s.CacheCreationTokens
+		stats.CacheReadTokens += s.CacheReadTokens
+	}
 	return stats
 }
 
 func getCursorDir() string {
+	if p := strings.TrimSpace(os.Getenv("TOKALYTICS_CURSOR_HOME")); p != "" {
+		return p
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".cursor")
 }
@@ -389,9 +478,9 @@ func getCursorDir() string {
 func ParseCursorSessions() []Session {
 	dir := getCursorDir()
 	projectsDir := filepath.Join(dir, "projects")
-	
+
 	var sessions []Session
-	
+
 	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
 		return nil
 	}
@@ -401,24 +490,30 @@ func ParseCursorSessions() []Session {
 		if !entry.IsDir() {
 			continue
 		}
-		
+
 		transcriptsDir := filepath.Join(projectsDir, entry.Name(), "agent-transcripts")
 		if _, err := os.Stat(transcriptsDir); os.IsNotExist(err) {
 			continue
 		}
-		
+
 		sessionDirs, _ := os.ReadDir(transcriptsDir)
 		for _, sDir := range sessionDirs {
-			if !sDir.IsDir() {
+			var jsonlPath, sessionKey string
+			if sDir.IsDir() {
+				sessionKey = sDir.Name()
+				jsonlPath = filepath.Join(transcriptsDir, sessionKey, sessionKey+".jsonl")
+			} else if strings.HasSuffix(sDir.Name(), ".jsonl") {
+				sessionKey = strings.TrimSuffix(sDir.Name(), ".jsonl")
+				jsonlPath = filepath.Join(transcriptsDir, sDir.Name())
+			} else {
 				continue
 			}
-			
-			jsonlPath := filepath.Join(transcriptsDir, sDir.Name(), sDir.Name()+".jsonl")
+
 			rawEntries, err := ParseJSONLFile(jsonlPath)
 			if err != nil {
 				continue
 			}
-			
+
 			info, _ := sDir.Info()
 			dateStr := info.ModTime().Format("2006-01-02T15:04:05Z")
 
@@ -443,7 +538,7 @@ func ParseCursorSessions() []Session {
 			}
 
 			sess := Session{
-				SessionID:  "cursor-" + sDir.Name(),
+				SessionID:  "cursor-" + sessionKey,
 				Project:    entry.Name(),
 				Date:       date,
 				Timestamp:  firstTimestamp,

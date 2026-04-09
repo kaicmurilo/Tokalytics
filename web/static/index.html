@@ -1445,6 +1445,7 @@ async function loadPlugins() {
       { key: 'claude', label: 'Claude Code' },
       { key: 'cursor', label: 'Cursor' },
       { key: 'gemini', label: 'Gemini CLI' },
+      { key: 'codex', label: 'Codex' },
     ];
     function badgeList(items) {
       return items && items.length
@@ -1509,9 +1510,16 @@ function modelShort(m) {
   if (m.includes('opus')) return 'Opus';
   if (m.includes('sonnet')) return 'Sonnet';
   if (m.includes('haiku')) return 'Haiku';
+  if (m.toLowerCase() === 'codex') return 'Codex';
+  if (m.toLowerCase().includes('cursor-transcript')) return 'Cursor';
   return m;
 }
 function projectShort(p) {
+  if (p.includes('/') || p.includes('\\')) {
+    const normalized = p.replace(/\\/g, '/').replace(/\/+$/, '');
+    const parts = normalized.split('/');
+    return parts[parts.length - 1] || p;
+  }
   // Strip Windows drive prefix (e.g. D-- or C--)
   let s = p.replace(/^[A-Za-z]--/, '');
   // Iteratively strip known parent directory segments
@@ -1521,6 +1529,7 @@ function projectShort(p) {
   return s || p;
 }
 function projectFull(p) {
+  if (p.includes('/') || p.includes('\\')) return p;
   // Show the raw encoded name with Windows drive restored for readability
   return p.replace(/^([A-Za-z])--/, '$1:\\');
 }
@@ -1555,9 +1564,29 @@ async function fetchData() {
       showError(json.error || (t('errServerPrefix') + res.status));
       return;
     }
-    if (!json.totals || !json.sessions) {
-      showError(t('errNoData'));
-      return;
+    // Go serializa [] nil como JSON null; !null bloqueava o dashboard inteiro.
+    if (!Array.isArray(json.sessions)) json.sessions = [];
+    if (!Array.isArray(json.dailyUsage)) json.dailyUsage = [];
+    if (!Array.isArray(json.modelBreakdown)) json.modelBreakdown = [];
+    if (!Array.isArray(json.projectBreakdown)) json.projectBreakdown = [];
+    if (!Array.isArray(json.topPrompts)) json.topPrompts = [];
+    if (!Array.isArray(json.insights)) json.insights = [];
+    if (!Array.isArray(json.warnings)) json.warnings = [];
+    if (!json.totals || typeof json.totals !== 'object') {
+      json.totals = {
+        totalSessions: 0, totalQueries: 0, totalTokens: 0,
+        totalInputTokens: 0, totalOutputTokens: 0,
+        totalCacheCreationTokens: 0, totalCacheReadTokens: 0,
+        totalCost: 0, totalSaved: 0, cacheHitRate: 0,
+        avgTokensPerQuery: 0, avgTokensPerSession: 0, dateRange: null,
+      };
+    }
+    if (!json.providers || typeof json.providers !== 'object') json.providers = {};
+    if (!json.localSummary || typeof json.localSummary !== 'object') {
+      json.localSummary = {
+        totalTokens: 0, totalCost: 0, sessions: 0,
+        inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0,
+      };
     }
     DATA = json;
     render();
@@ -1794,7 +1823,7 @@ function renderInsights() {
 function renderDailyChart() {
   const canvas = document.getElementById('dailyChart');
   const ctx = canvas.getContext('2d');
-  const data = DATA.dailyUsage;
+  const data = DATA.dailyUsage || [];
   if (!data.length) return;
 
   const dpr = window.devicePixelRatio || 1;
@@ -1912,7 +1941,7 @@ function roundedRect(ctx, x, y, w, h, r) {
 function renderModelChart() {
   const canvas = document.getElementById('modelChart');
   const ctx = canvas.getContext('2d');
-  const data = DATA.modelBreakdown;
+  const data = DATA.modelBreakdown || [];
   if (!data.length) return;
 
   const dpr = window.devicePixelRatio || 1;
@@ -2033,8 +2062,8 @@ function buildDrawerContent(p) {
 
 // Project breakdown
 function renderProjectBreakdown() {
-  const projects = DATA.projectBreakdown;
-  if (!projects || !projects.length) return;
+  const projects = DATA.projectBreakdown || [];
+  if (!projects.length) return;
 
   const countEl = document.getElementById('projectsCount');
   countEl.textContent = projects.length === 1 ? t('projectsCountOne') : t('projectsCount', { n: String(projects.length) });
@@ -2087,7 +2116,7 @@ function renderProjectBreakdown() {
 
 // Top prompts
 function renderTopPrompts() {
-  const prompts = DATA.topPrompts;
+  const prompts = DATA.topPrompts || [];
   if (!prompts.length) return;
   const maxTokens = prompts[0].totalTokens;
 
@@ -2119,7 +2148,7 @@ function renderTopPrompts() {
 
 // Sessions
 function renderSessions() {
-  let sessions = [...DATA.sessions];
+  let sessions = [...(DATA.sessions || [])];
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     sessions = sessions.filter(s =>
@@ -2408,7 +2437,7 @@ function renderDrilldownInsight(grouped, session) {
 
 // Drill-down
 function openDrilldown(sessionId) {
-  const session = DATA.sessions.find(s => s.sessionId === sessionId);
+  const session = (DATA.sessions || []).find(s => s.sessionId === sessionId);
   if (!session) return;
 
   document.getElementById('drilldownTitle').textContent = session.firstPrompt.substring(0, 140);

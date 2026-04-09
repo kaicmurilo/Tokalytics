@@ -1,4 +1,4 @@
-// Package sysmon coleta uso de CPU e RAM do host e de processos ligados a Cursor, Claude Code e Gemini CLI.
+// Package sysmon coleta uso de CPU e RAM do host e de processos ligados a Cursor, Claude Code, Gemini CLI e Codex.
 package sysmon
 
 import (
@@ -65,6 +65,7 @@ func modelHintFromCmdline(cmd string) string {
 	s := strings.ToLower(cmd)
 	// Ordem: mais específico primeiro
 	checks := []struct{ needle, label string }{
+		{"codex", "Codex"},
 		{"claude-opus", "Claude Opus"},
 		{"claude-sonnet", "Claude Sonnet"},
 		{"claude-haiku", "Claude Haiku"},
@@ -132,12 +133,35 @@ func isClaudeCodeCLI(name, cmdline string) bool {
 	return false
 }
 
+func isCodexCLI(name, cmdline string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	c := strings.ToLower(cmdline)
+	base := strings.TrimSuffix(n, ".exe")
+
+	if base == "codex" {
+		return true
+	}
+	if strings.Contains(c, "/bin/codex") || strings.Contains(c, "\\codex.exe") {
+		return true
+	}
+	if strings.Contains(c, "codex-cli") || strings.Contains(c, "codex-tui") || strings.Contains(c, "/.codex/") {
+		return true
+	}
+	if (base == "node" || base == "nodejs" || base == "bun") && strings.Contains(c, "bin/codex") {
+		return true
+	}
+	return false
+}
+
 func classifyProcess(name string, cmdline string) (toolID string) {
 	n := strings.ToLower(strings.TrimSpace(name))
 	c := strings.ToLower(cmdline)
 
 	if strings.Contains(n, "cursor") || strings.Contains(c, "cursor.app") || strings.Contains(c, "\\cursor\\") {
 		return "cursor"
+	}
+	if isCodexCLI(name, cmdline) {
+		return "codex"
 	}
 	if isGeminiCLI(name, cmdline) {
 		return "gemini"
@@ -157,13 +181,14 @@ func classifyProcess(name string, cmdline string) (toolID string) {
 func Collect() Snapshot {
 	Warmup()
 
-	note := "CPU e RAM são medidos no seu Mac/PC. O modelo de LLM só aparece quando o processo expõe esse nome na linha de comando; muitos processos aparecem como “Outros (ferramenta)”."
+	note := `CPU e RAM são medidos no seu computador. O modelo de LLM só aparece quando o processo expõe esse nome na linha de comando; muitos processos aparecem como "Outros (ferramenta)".`
 	snap := Snapshot{
 		Note: note,
 		Tools: []ToolBucket{
 			{ID: "cursor", Label: "Cursor"},
 			{ID: "claude", Label: "Claude Code"},
 			{ID: "gemini", Label: "Gemini CLI"},
+			{ID: "codex", Label: "Codex"},
 		},
 	}
 
@@ -183,6 +208,7 @@ func Collect() Snapshot {
 		"cursor": {},
 		"claude": {},
 		"gemini": {},
+		"codex":  {},
 	}
 
 	procs, err := process.Processes()

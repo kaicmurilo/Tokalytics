@@ -22,7 +22,7 @@ func (p *CursorProvider) FetchUsage() (*Usage, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	setHeaders := func(r *http.Request) {
 		r.Header.Set("Cookie", p.CookieHeader)
-		r.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+		r.Header.Set("User-Agent", "Mozilla/5.0")
 		r.Header.Set("Accept", "application/json")
 	}
 
@@ -117,6 +117,117 @@ func (p *CursorProvider) FetchUsage() (*Usage, error) {
 				PctLeft: 100 - pct,
 				ResetsAt: billingEnd,
 			})
+		}
+	}
+
+	return u, nil
+}
+
+// CursorLocalProvider usa o JWT armazenado localmente pelo IDE (sem cookies).
+// Chama api2.cursor.sh com Authorization: Bearer — funciona no Linux sem configuração manual.
+type CursorLocalProvider struct {
+	BearerToken string
+}
+
+func (p *CursorLocalProvider) ID() string   { return "cursor" }
+func (p *CursorLocalProvider) Name() string { return "Cursor" }
+
+func (p *CursorLocalProvider) FetchUsage() (*Usage, error) {
+	if p.BearerToken == "" {
+		return nil, fmt.Errorf("no bearer token")
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	setHeaders := func(r *http.Request) {
+		r.Header.Set("Authorization", "Bearer "+p.BearerToken)
+		r.Header.Set("User-Agent", "Mozilla/5.0")
+		r.Header.Set("Accept", "application/json")
+	}
+
+	// 1. Perfil/plano via full_stripe_profile
+	var membership, subStatus string
+	req, _ := http.NewRequest("GET", "https://api2.cursor.sh/auth/full_stripe_profile", nil)
+	setHeaders(req)
+	if resp, err := client.Do(req); err == nil && resp.StatusCode == 200 {
+		var profile map[string]interface{}
+		if json.NewDecoder(resp.Body).Decode(&profile) == nil {
+			if m, ok := profile["individualMembershipType"].(string); ok && m != "" {
+				membership = m
+			} else if m, ok := profile["membershipType"].(string); ok {
+				membership = m
+			}
+			if s, ok := profile["subscriptionStatus"].(string); ok {
+				subStatus = s
+			}
+		}
+		resp.Body.Close()
+	}
+
+	// 2. Uso por modelo via auth/usage
+	req2, _ := http.NewRequest("GET", "https://api2.cursor.sh/auth/usage", nil)
+	setHeaders(req2)
+	resp2, err := client.Do(req2)
+	if err != nil {
+		return nil, fmt.Errorf("cursor usage request: %v", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode == 401 || resp2.StatusCode == 403 {
+		return nil, fmt.Errorf("cursor: token expirado ou sem permissão")
+	}
+	if resp2.StatusCode != 200 {
+		return nil, fmt.Errorf("cursor api status %d", resp2.StatusCode)
+	}
+
+	var usageData map[string]interface{}
+	if err := json.NewDecoder(resp2.Body).Decode(&usageData); err != nil {
+		return nil, fmt.Errorf("decode cursor usage: %v", err)
+	}
+
+	plan := membership
+	if subStatus != "" && subStatus != "active" {
+		plan = membership + " (" + subStatus + ")"
+	}
+
+	u := &Usage{
+		ProviderID: "cursor",
+		Name:       "Cursor",
+		Plan:       plan,
+		UpdatedAt:  "agora",
+		TotalLimit: 100,
+	}
+
+	// Calcula total de requests do mês
+	var totalRequests int
+	for model, raw := range usageData {
+		if model == "startOfMonth" {
+			continue
+		}
+		if entry, ok := raw.(map[string]interface{}); ok {
+			if n, ok := entry["numRequests"].(float64); ok {
+				totalRequests += int(n)
+			}
+		}
+	}
+
+	// Extrai data de início do mês para reset
+	var monthStart time.Time
+	if s, ok := usageData["startOfMonth"].(string); ok {
+		monthStart, _ = time.Parse(time.RFC3339, s)
+	}
+	var resetAt time.Time
+	if !monthStart.IsZero() {
+		// Reset aproximado = 30 dias após início do período
+		resetAt = monthStart.AddDate(0, 1, 0)
+	}
+
+	if totalRequests > 0 || !monthStart.IsZero() {
+		u.Windows = []RateWindow{
+			{
+				Name:     fmt.Sprintf("Requests este mês: %d", totalRequests),
+				PctUsed:  0,
+				PctLeft:  100,
+				ResetsAt: resetAt,
+			},
 		}
 	}
 

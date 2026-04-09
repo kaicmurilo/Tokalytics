@@ -11,9 +11,9 @@
   ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
-    "start": "go build -o tokalytics main.go && ./tokalytics",
-    "dev": "go run . -dev",
-    "build": "go build -o tokalytics main.go",
+    "start": "bash scripts/with-go.sh build -o tokalytics main.go && ./tokalytics",
+    "dev": "bash scripts/with-go.sh run . -dev",
+    "build": "bash scripts/with-go.sh build -o tokalytics main.go",
     "release:npm": "npm publish --access public"
   },
   "keywords": [

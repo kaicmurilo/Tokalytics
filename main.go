@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -267,8 +268,21 @@ func cmdStatus() {
 }
 
 func onReady() {
+	var iconData = []byte{
+		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
+		0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0xf3, 0xff,
+		0x61, 0x00, 0x00, 0x00, 0x16, 0x49, 0x44, 0x41,
+		0x54, 0x78, 0x9c, 0x63, 0xfc, 0xcf, 0xc0, 0x40,
+		0x12, 0x0c, 0x0c, 0x0c, 0x00, 0x00, 0x12, 0x00,
+		0x01, 0x01, 0xc5, 0xb8, 0xc9, 0xc0, 0x00, 0x00,
+		0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
+		0x60, 0x82,
+	}
+	systray.SetIcon(iconData)
 	systray.SetTitle("⟳")
-	systray.SetTooltip("Tokalytics: Claude, Cursor & Gemini Usage")
+	systray.SetTooltip("Tokalytics: Claude, Cursor, Gemini & Codex Usage")
 
 	registerProviders()
 
@@ -316,25 +330,34 @@ func registerProviders() {
 
 	cfg := utils.LoadSettings()
 
-	// Claude cookie: settings file first, then Chrome
+	// Claude: sempre registra — OAuth lê de ~/.claude/.credentials.json (Linux) ou Keychain (macOS).
+	// Cookie web é um fallback adicional (usado quando OAuth não está disponível).
 	claudeCookie := cfg.ClaudeCookie
 	if claudeCookie == "" {
 		if val, err := utils.GetChromeCookie("claude.ai", "sessionKey"); err == nil && val != "" {
 			claudeCookie = "sessionKey=" + val
 		}
 	}
+	providers.Register(&providers.ClaudeProvider{CookieHeader: claudeCookie})
 	if claudeCookie != "" {
-		log.Println("Claude provider registrado.")
-		providers.Register(&providers.ClaudeProvider{CookieHeader: claudeCookie})
+		log.Println("Claude provider registrado (cookie + OAuth).")
 	} else {
-		log.Println("Claude: nenhum cookie configurado. Configure em Settings no dashboard.")
+		log.Println("Claude provider registrado (OAuth local).")
 	}
 
 	// Gemini CLI: always register (reads local session files, no auth needed)
 	providers.Register(&providers.GeminiProvider{})
 	log.Println("Gemini provider registrado.")
 
-	// Cursor cookie: settings file first, then Chrome
+	// Codex CLI: register when local config/session dir exists
+	if _, err := os.Stat(filepath.Join(providersPathHome(), ".codex")); err == nil {
+		providers.Register(&providers.CodexProvider{})
+		log.Println("Codex provider registrado.")
+	} else {
+		log.Println("Codex: nenhuma instalação local detectada.")
+	}
+
+	// Cursor: settings file → Chrome cookies → Cursor local SQLite (Bearer JWT)
 	cursorCookie := cfg.CursorCookie
 	if cursorCookie == "" {
 		if val, err := utils.GetChromeCookie("cursor.com", "WorkosCursorSessionToken"); err == nil && val != "" {
@@ -342,11 +365,19 @@ func registerProviders() {
 		}
 	}
 	if cursorCookie != "" {
-		log.Println("Cursor provider registrado.")
+		log.Println("Cursor provider registrado (cookie).")
 		providers.Register(&providers.CursorProvider{CookieHeader: cursorCookie})
+	} else if val, err := utils.GetCursorAuthToken(); err == nil && val != "" {
+		log.Println("Cursor provider registrado (JWT local).")
+		providers.Register(&providers.CursorLocalProvider{BearerToken: val})
 	} else {
-		log.Println("Cursor: nenhum cookie configurado.")
+		log.Println("Cursor: nenhum cookie ou token local encontrado.")
 	}
+}
+
+func providersPathHome() string {
+	home, _ := os.UserHomeDir()
+	return home
 }
 
 func readClaudePlugins(home string) []string {
@@ -496,6 +527,79 @@ func readGeminiExtensions(home string) []string {
 	return names
 }
 
+func readCodexSkills(home string) []string {
+	root := filepath.Join(home, ".codex", "skills")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return []string{}
+	}
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), ".") {
+			subEntries, err := os.ReadDir(filepath.Join(root, entry.Name()))
+			if err != nil {
+				continue
+			}
+			for _, sub := range subEntries {
+				if sub.IsDir() {
+					names = append(names, sub.Name())
+				}
+			}
+			continue
+		}
+		names = append(names, entry.Name())
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readCodexPlugins(home string) []string {
+	path := filepath.Join(home, ".codex", "config.toml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	re := regexp.MustCompile(`(?m)^\[plugins\."([^"]+)"\]`)
+	matches := re.FindAllStringSubmatch(string(data), -1)
+	names := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if len(match) == 2 {
+			names = append(names, match[1])
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func readCodexMCPs(home string) []string {
+	path := filepath.Join(home, ".codex", "config.toml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return []string{}
+	}
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?m)^\[mcp_servers\.([^\]."]+)\]`),
+		regexp.MustCompile(`(?m)^\[mcp_servers\."([^"]+)"\]`),
+	}
+	seen := map[string]struct{}{}
+	for _, re := range patterns {
+		for _, match := range re.FindAllStringSubmatch(string(data), -1) {
+			if len(match) == 2 {
+				seen[match[1]] = struct{}{}
+			}
+		}
+	}
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func startHTTPServer() {
 	subFS, err := fs.Sub(staticFiles, "web/static")
 	if err != nil {
@@ -558,7 +662,7 @@ func startHTTPServer() {
 		case http.MethodGet:
 			cfg := utils.LoadSettings()
 			masked := map[string]interface{}{
-				"claudeConfigured":     cfg.ClaudeCookie != "",
+				"claudeConfigured":   cfg.ClaudeCookie != "",
 				"cursorConfigured":   cfg.CursorCookie != "",
 				"launchAtLogin":      cfg.LaunchAtLogin,
 				"autostartSupported": autostart.Supported(),
@@ -629,7 +733,9 @@ func startHTTPServer() {
 		// Parse local logs
 		claudeSessions := providers.ParseClaudeSessions()
 		cursorSessions := providers.ParseCursorSessions()
+		codexSessions := providers.ParseCodexSessions()
 		allSessions := append(claudeSessions, cursorSessions...)
+		allSessions = append(allSessions, codexSessions...)
 
 		// Full aggregation: daily, model, projects, top prompts, insights
 		agg := providers.Aggregate(allSessions)
@@ -660,7 +766,7 @@ func startHTTPServer() {
 			"topPrompts":       agg.TopPrompts,
 			"totals":           agg.Totals,
 			"insights":         agg.Insights,
-			"warnings": []map[string]interface{}{},
+			"warnings":         []map[string]interface{}{},
 		}
 		json.NewEncoder(w).Encode(data)
 	})
@@ -692,6 +798,11 @@ func startHTTPServer() {
 				"plugins": readGeminiExtensions(home),
 				"mcps":    []string{},
 				"skills":  readGeminiSkills(home),
+			},
+			"codex": map[string]interface{}{
+				"plugins": readCodexPlugins(home),
+				"mcps":    readCodexMCPs(home),
+				"skills":  readCodexSkills(home),
 			},
 		}
 		json.NewEncoder(w).Encode(result)
