@@ -36,6 +36,8 @@ type ToolBucket struct {
 	RSSBytes     uint64       `json:"rssBytes"`
 	ProcessCount int          `json:"processCount"`
 	Models       []ModelSlice `json:"models"`
+	DiskBytes    uint64       `json:"diskBytes"`
+	DiskPaths    []DiskPath   `json:"diskPaths"`
 }
 
 // Snapshot é a resposta de /api/system-live.
@@ -273,6 +275,18 @@ func Collect() Snapshot {
 		snap.Tools[i].CPUPercent = sumCPU
 		snap.Tools[i].RSSBytes = sumRSS
 		snap.Tools[i].ProcessCount = count
+	}
+
+	diskMap := diskUsageByTool()
+	for i := range snap.Tools {
+		id := snap.Tools[i].ID
+		parts := diskMap[id]
+		var sumD uint64
+		for _, p := range parts {
+			sumD += p.Bytes
+		}
+		snap.Tools[i].DiskBytes = sumD
+		snap.Tools[i].DiskPaths = parts
 	}
 
 	return snap

@@ -999,6 +999,13 @@
   .live-model-table tr:last-child td { border-bottom:none; }
   .live-empty-tool { font-size:13px; color:var(--text-tertiary); font-style:italic; padding:4px 0; }
   .live-cpu-hint { font-size:11px; color:var(--text-tertiary); margin-top:10px; max-width:640px; line-height:1.45; }
+  .live-disk-hint { font-size:11px; color:var(--text-tertiary); margin-top:8px; max-width:720px; line-height:1.45; }
+  .live-disk-detail { margin:0 0 12px; padding:10px 12px; border-radius:8px; background:rgba(37,99,235,0.06); border:1px solid var(--border); font-size:12px; }
+  .live-disk-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--text-secondary); }
+  .live-disk-tag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-tertiary); }
+  .live-disk-sum { font-family:var(--mono); font-weight:600; color:var(--text); }
+  .live-disk-list { margin:6px 0 0; padding:0 0 0 18px; color:var(--text-secondary); line-height:1.5; }
+  .live-disk-list .num { font-family:var(--mono); color:var(--text); }
 </style>
 </head>
 <body>
@@ -1196,6 +1203,7 @@
     <p class="live-note" id="systemLiveNote"></p>
     <div class="live-host-grid" id="systemLiveHost"></div>
     <p class="live-cpu-hint" data-i18n="resourcesCpuHint">CPU per tool is the sum of detected processes; on multi-core machines this sum can exceed 100%.</p>
+    <p class="live-disk-hint" data-i18n="resourcesDiskHint">Disk usage sums known data folders per tool.</p>
     <div class="live-tools-grid" id="systemLiveTools"></div>
   </div>
 
@@ -1383,6 +1391,25 @@ function fmtBytes(n) {
   return n + t('fmtUnitB');
 }
 
+function liveDiskBlock(toolRow) {
+  const paths = toolRow.diskPaths || [];
+  const total = toolRow.diskBytes != null ? toolRow.diskBytes : 0;
+  if (!paths.length && !total) return '';
+  const sumStr = fmtBytes(total);
+  const list = paths.map(function (p) {
+    return '<li><span class="live-disk-path">' + escapeHtml(p.path) + '</span> · <span class="num">' + fmtBytes(p.bytes) + '</span></li>';
+  }).join('');
+  return '<div class="live-disk-detail"><div class="live-disk-head"><span class="live-disk-tag">' + escapeHtml(t('liveDiskFolders')) + '</span><span class="live-disk-sum">' + sumStr + '</span></div>' +
+    (list ? '<ul class="live-disk-list">' + list + '</ul>' : '') + '</div>';
+}
+
+function liveDiskMetaStr(toolRow) {
+  const paths = toolRow.diskPaths || [];
+  const total = toolRow.diskBytes != null ? toolRow.diskBytes : 0;
+  if (!paths.length && !total) return '—';
+  return fmtBytes(total);
+}
+
 function stopSystemLivePolling() {
   if (systemLiveTimer) {
     clearInterval(systemLiveTimer);
@@ -1416,8 +1443,10 @@ async function fetchSystemLive() {
     const tools = d.tools || [];
     toolsEl.innerHTML = tools.map(function (toolRow) {
       const models = toolRow.models || [];
+      const diskB = liveDiskBlock(toolRow);
+      const dMeta = liveDiskMetaStr(toolRow);
       if (!toolRow.processCount) {
-        return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(t('liveNoProc')) + '</span></div><div class="live-empty-tool">' + escapeHtml(t('liveNoProcDetail')) + '</div></div>';
+        return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(t('liveNoProc')) + '</span></div>' + diskB + '<div class="live-empty-tool">' + escapeHtml(t('liveNoProcDetail')) + '</div></div>';
       }
       const rows = models.map(function(m) {
         const cpuM = (m.cpuPercent != null && !isNaN(m.cpuPercent)) ? m.cpuPercent.toFixed(1) + '%' : '—';
@@ -1425,8 +1454,8 @@ async function fetchSystemLive() {
         return '<tr><td>' + escapeHtml(mk) + '</td><td class="num">' + cpuM + '</td><td class="num">' + fmtBytes(m.rssBytes) + '</td><td class="num">' + (m.processCount || 0) + '</td></tr>';
       }).join('');
       const sumCpu = (toolRow.cpuPercent != null && !isNaN(toolRow.cpuPercent)) ? toolRow.cpuPercent.toFixed(1) : '—';
-      const metaLine = t('liveToolMeta', { cpu: sumCpu, ram: fmtBytes(toolRow.rssBytes), n: String(toolRow.processCount || 0) });
-      return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(metaLine) + '</span></div><table class="live-model-table"><thead><tr><th>' + escapeHtml(t('liveThModel')) + '</th><th class="num">' + escapeHtml(t('liveThCpu')) + '</th><th class="num">' + escapeHtml(t('liveThRam')) + '</th><th class="num">' + escapeHtml(t('liveThProc')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      const metaLine = t('liveToolMeta', { cpu: sumCpu, ram: fmtBytes(toolRow.rssBytes), disk: dMeta, n: String(toolRow.processCount || 0) });
+      return '<div class="live-tool-card"><div class="live-tool-head"><span class="live-tool-title">' + escapeHtml(toolRow.label) + '</span><span class="live-tool-meta">' + escapeHtml(metaLine) + '</span></div>' + diskB + '<table class="live-model-table"><thead><tr><th>' + escapeHtml(t('liveThModel')) + '</th><th class="num">' + escapeHtml(t('liveThCpu')) + '</th><th class="num">' + escapeHtml(t('liveThRam')) + '</th><th class="num">' + escapeHtml(t('liveThProc')) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }).join('');
   } catch (e) {
     if (noteEl) noteEl.textContent = '';
