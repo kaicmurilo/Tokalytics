@@ -84,17 +84,6 @@ func renderBar(pct float64) string {
 	return fmt.Sprintf("%s %.0f%%", bar, pct)
 }
 
-func statusEmoji(pct float64) string {
-	switch {
-	case pct >= 90:
-		return "🔴"
-	case pct >= 70:
-		return "🟡"
-	default:
-		return "🟢"
-	}
-}
-
 // Start inicia o loop de polling
 func Start() {
 	log.Println("Iniciando daemon de polling do Tokalytics...")
@@ -132,34 +121,16 @@ func updateTray() {
 	if len(usages) == 0 {
 		stats := providers.GetTodayStats()
 		if stats.TotalTokens > 0 {
-			systray.SetTitle(fmt.Sprintf("↑ %s · $%.2f", fmtTok(stats.TotalTokens), stats.TotalCost))
 			systray.SetTooltip("Tokalytics — sem dados de quota online")
 		} else {
-			systray.SetTitle("⟳")
 			systray.SetTooltip("Tokalytics — atualizando...")
 		}
+		systray.SetTitle("")
 		fillSlotsNoData()
 		return
 	}
 
-	// Build compact tray title: just status emojis for each provider
-	providerOrderTitle := []string{"claude", "cursor", "gemini", "codex"}
-	var titleParts []string
-	for _, id := range providerOrderTitle {
-		usage, ok := usages[id]
-		if !ok {
-			continue
-		}
-		if len(usage.Windows) > 0 {
-			w := usage.Windows[0]
-			titleParts = append(titleParts, statusEmoji(w.PctUsed))
-		}
-	}
-	if len(titleParts) == 0 {
-		systray.SetTitle("⟳")
-	} else {
-		systray.SetTitle(strings.Join(titleParts, ""))
-	}
+	systray.SetTitle("")
 	systray.SetTooltip("Clique para ver detalhes de uso")
 
 	fillSlotsWithData(usages)

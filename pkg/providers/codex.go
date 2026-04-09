@@ -60,25 +60,14 @@ func (p *CodexProvider) FetchUsage() (*Usage, error) {
 	}
 
 	if meta.valid {
-		name := "Primary"
-		switch meta.windowMinutes {
-		case 60:
-			name = "Hourly"
-		case 24 * 60:
-			name = "Daily"
-		case 7 * 24 * 60:
-			name = "Weekly"
+		u.Windows = append(u.Windows, meta.windows...)
+		if len(meta.windows) > 0 {
+			first := meta.windows[0]
+			u.Used = first.PctUsed
+			u.Remaining = first.PctLeft
+			u.SessionReset = first.ResetsAt
+			u.WeeklyReset = first.ResetsAt
 		}
-		u.Used = meta.usedPct
-		u.Remaining = 100 - meta.usedPct
-		u.SessionReset = meta.resetsAt
-		u.WeeklyReset = meta.resetsAt
-		u.Windows = append(u.Windows, RateWindow{
-			Name:     name,
-			PctUsed:  meta.usedPct,
-			PctLeft:  maxPctLeft(meta.usedPct),
-			ResetsAt: meta.resetsAt,
-		})
 	}
 
 	if todayTokens > 0 || last30Tokens > 0 {
@@ -98,12 +87,10 @@ func (p *CodexProvider) FetchUsage() (*Usage, error) {
 }
 
 type codexRateMeta struct {
-	valid         bool
-	usedPct       float64
-	windowMinutes int
-	resetsAt      time.Time
-	plan          string
-	timestamp     time.Time
+	valid     bool
+	windows   []RateWindow
+	plan      string
+	timestamp time.Time
 }
 
 func getCodexDir() string {
@@ -345,27 +332,105 @@ func latestCodexRateMetaFromFile(path string) codexRateMeta {
 		if rateLimits == nil {
 			continue
 		}
-		primary, _ := rateLimits["primary"].(map[string]interface{})
-		if primary == nil {
-			continue
-		}
 
 		ts, _ := entry["timestamp"].(string)
 		parsedTS, _ := time.Parse(time.RFC3339Nano, ts)
+		windows := codexRateWindows(rateLimits, parsedTS)
+		if len(windows) == 0 {
+			continue
+		}
 		plan, _ := rateLimits["plan_type"].(string)
-		resetsAtUnix := int64(toInt(primary["resets_at"]))
 
 		latest = codexRateMeta{
-			valid:         true,
-			usedPct:       toFloat(primary["used_percent"]),
-			windowMinutes: toInt(primary["window_minutes"]),
-			resetsAt:      time.Unix(resetsAtUnix, 0),
-			plan:          strings.TrimSpace(plan),
-			timestamp:     parsedTS,
+			valid:     true,
+			windows:   windows,
+			plan:      strings.TrimSpace(plan),
+			timestamp: parsedTS,
 		}
 	}
 
 	return latest
+}
+
+func codexRateWindows(rateLimits map[string]interface{}, eventTS time.Time) []RateWindow {
+	order := []string{"primary", "secondary", "credits"}
+	windows := make([]RateWindow, 0, len(order))
+	seen := map[string]bool{}
+
+	for _, key := range order {
+		window, ok := codexRateWindow(key, rateLimits[key], eventTS)
+		if !ok {
+			continue
+		}
+		windows = append(windows, window)
+		seen[key] = true
+	}
+
+	for key, raw := range rateLimits {
+		if seen[key] || key == "plan_type" || key == "limit_id" || key == "limit_name" {
+			continue
+		}
+		window, ok := codexRateWindow(key, raw, eventTS)
+		if !ok {
+			continue
+		}
+		windows = append(windows, window)
+	}
+
+	return windows
+}
+
+func codexRateWindow(kind string, raw interface{}, eventTS time.Time) (RateWindow, bool) {
+	payload, _ := raw.(map[string]interface{})
+	if payload == nil {
+		return RateWindow{}, false
+	}
+
+	usedPct := toFloat(payload["used_percent"])
+	windowMinutes := toInt(payload["window_minutes"])
+	if usedPct == 0 && windowMinutes == 0 && payload["resets_at"] == nil && payload["resets_in_seconds"] == nil {
+		return RateWindow{}, false
+	}
+
+	return RateWindow{
+		Name:     codexWindowName(kind, windowMinutes),
+		PctUsed:  usedPct,
+		PctLeft:  maxPctLeft(usedPct),
+		ResetsAt: codexResetAt(payload, eventTS),
+	}, true
+}
+
+func codexWindowName(kind string, minutes int) string {
+	switch {
+	case minutes >= (7*24*60)-5 && minutes <= (7*24*60)+5:
+		return "Weekly"
+	case minutes >= (24*60)-5 && minutes <= (24*60)+5:
+		return "Daily"
+	case minutes > 0 && minutes < 24*60 && minutes%60 == 0:
+		return fmt.Sprintf("%dh", minutes/60)
+	case minutes > 0 && minutes < 24*60:
+		return fmt.Sprintf("%.1fh", float64(minutes)/60)
+	case minutes > 0:
+		return fmt.Sprintf("%.1fd", float64(minutes)/(24*60))
+	case kind != "":
+		return strings.ToUpper(kind[:1]) + kind[1:]
+	default:
+		return "Usage"
+	}
+}
+
+func codexResetAt(payload map[string]interface{}, eventTS time.Time) time.Time {
+	if unix := int64(toInt(payload["resets_at"])); unix > 0 {
+		return time.Unix(unix, 0)
+	}
+	if seconds := toInt(payload["resets_in_seconds"]); seconds > 0 {
+		base := eventTS
+		if base.IsZero() {
+			base = time.Now()
+		}
+		return base.Add(time.Duration(seconds) * time.Second)
+	}
+	return time.Time{}
 }
 
 func truncatePrompt(s string, limit int) string {

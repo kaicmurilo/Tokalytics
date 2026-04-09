@@ -2,6 +2,8 @@
 package sysmon
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -184,14 +186,19 @@ func Collect() Snapshot {
 	Warmup()
 
 	note := `CPU e RAM são medidos no seu computador. O modelo de LLM só aparece quando o processo expõe esse nome na linha de comando; muitos processos aparecem como "Outros (ferramenta)".`
+	tools := []ToolBucket{
+		{ID: "cursor", Label: "Cursor"},
+		{ID: "claude", Label: "Claude Code"},
+		{ID: "gemini", Label: "Gemini CLI"},
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
+			tools = append(tools, ToolBucket{ID: "codex", Label: "Codex"})
+		}
+	}
 	snap := Snapshot{
-		Note: note,
-		Tools: []ToolBucket{
-			{ID: "cursor", Label: "Cursor"},
-			{ID: "claude", Label: "Claude Code"},
-			{ID: "gemini", Label: "Gemini CLI"},
-			{ID: "codex", Label: "Codex"},
-		},
+		Note:  note,
+		Tools: tools,
 	}
 
 	if v, err := mem.VirtualMemory(); err == nil {
@@ -210,7 +217,12 @@ func Collect() Snapshot {
 		"cursor": {},
 		"claude": {},
 		"gemini": {},
-		"codex":  {},
+	}
+	for _, t := range snap.Tools {
+		if t.ID == "codex" {
+			toolModelMap["codex"] = map[string]*ModelSlice{}
+			break
+		}
 	}
 
 	procs, err := process.Processes()

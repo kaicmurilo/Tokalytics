@@ -1484,7 +1484,7 @@ async function loadPlugins() {
     function section(labelKey, items, first) {
       return `<div class="plugin-section-label"${first ? '' : ' style="margin-top:14px"'}>${t(labelKey)}</div>${badgeList(items)}`;
     }
-    el.innerHTML = tools.map(row => {
+    el.innerHTML = tools.filter(row => data[row.key] != null).map(row => {
       const tool = data[row.key] || {};
       let parts = [];
       if (tool.plugins && tool.plugins.length) parts.push(section('pluginsSectionPlugins', tool.plugins, true));
