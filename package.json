@@ -1,6 +1,6 @@
 {
   "name": "tokalytics",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "Instale globalmente: npm i -g tokalytics. Veja para onde vão seus tokens do Claude Code, Gemini CLI, Cursor e Codex. Reescrito em Go como Tokalytics.",
   "bin": {
     "tokalytics": "bin/run.js"
@@ -11,9 +11,9 @@
   ],
   "scripts": {
     "postinstall": "node scripts/postinstall.js",
-    "start": "bash scripts/with-go.sh build -o tokalytics main.go && ./tokalytics",
+    "start": "bash scripts/with-go.sh build -o tokalytics . && ./tokalytics",
     "dev": "bash scripts/with-go.sh run . -dev",
-    "build": "bash scripts/with-go.sh build -o tokalytics main.go",
+    "build": "bash scripts/with-go.sh build -o tokalytics .",
     "release:npm": "npm publish --access public"
   },
   "keywords": [

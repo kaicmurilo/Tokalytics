@@ -67,6 +67,7 @@ func listenFrom(basePort, maxAttempts int) (net.Listener, int, error) {
 func main() {
 	stopF := flag.Bool("stop", false, "Encerra a instância em execução (via API local)")
 	reloadF := flag.Bool("reload", false, "Pede atualização de dados na instância em execução")
+	restartF := flag.Bool("restart", false, "Encerra a instância em execução e inicia de novo em segundo plano (com -dev não encerra; equivale a outro -start em paralelo)")
 	statusF := flag.Bool("status", false, "Mostra se há instância rodando, URL, versão da API e PID (runstate)")
 	devF := flag.Bool("dev", false, "Desenvolvimento: ignora instância já em execução e sobe outra (porta seguinte se 3456 ocupada)")
 	startF := flag.Bool("start", false, "Inicia em segundo plano (sem ocupar o terminal; sem ícone na barra de menu)")
@@ -82,8 +83,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "     tokalytics help\n\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nSem flags: abre o menu bar e o dashboard se ainda não existir instância.\n")
-		fmt.Fprintf(os.Stderr, "Use -start para subir em segundo plano e liberar o terminal.\n")
-		fmt.Fprintf(os.Stderr, "Use -dev (ou TOKALYTICS_DEV=1) para rodar em paralelo ao app instalado.\n")
+		fmt.Fprintf(os.Stderr, "Use -start para subir em segundo plano e liberar o terminal (-start e --start são equivalentes).\n")
+		fmt.Fprintf(os.Stderr, "Use -restart para encerrar e subir de novo; -dev (ou TOKALYTICS_DEV=1) para rodar em paralelo ao app instalado.\n")
 	}
 	flag.Parse()
 	args := flag.Args()
@@ -124,6 +125,13 @@ func main() {
 
 	skipSingleton := *devF || os.Getenv("TOKALYTICS_DEV") == "1" ||
 		strings.EqualFold(os.Getenv("TOKALYTICS_DEV"), "true")
+
+	if *restartF {
+		if err := cmdRestart(skipSingleton); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	if *startF {
 		if err := cmdStartBackground(skipSingleton); err != nil {
@@ -189,6 +197,30 @@ func cmdReload() error {
 	}
 	fmt.Println("Atualização de dados solicitada na instância em execução.")
 	return nil
+}
+
+// waitUntilNoRunningInstance aguarda até não haver resposta Tokalytics na faixa de portas (após shutdown).
+func waitUntilNoRunningInstance(maxWait time.Duration) {
+	deadline := time.Now().Add(maxWait)
+	for time.Now().Before(deadline) {
+		if _, ok := instancectl.FindRunning(); !ok {
+			return
+		}
+		time.Sleep(80 * time.Millisecond)
+	}
+}
+
+func cmdRestart(devMode bool) error {
+	if !devMode {
+		port := resolveInstancePort()
+		if port != 0 {
+			if err := instancectl.Shutdown(port); err != nil {
+				return fmt.Errorf("reinício: falha ao encerrar instância: %w", err)
+			}
+			waitUntilNoRunningInstance(20 * time.Second)
+		}
+	}
+	return cmdStartBackground(devMode)
 }
 
 func cmdStartBackground(devMode bool) error {

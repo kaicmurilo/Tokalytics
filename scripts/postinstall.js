@@ -1,10 +1,95 @@
 #!/usr/bin/env node
 'use strict';
 
+const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+
+/** Mesma faixa que `pkg/instancectl` (dashboard HTTP). */
+const PORT_MIN = 3456;
+const PORT_MAX = 3555;
+const SERVICE_NAME = 'tokalytics';
+
+function isGlobalNpmInstall() {
+  const g = process.env.npm_config_global;
+  return g === 'true' || g === '1';
+}
+
+function httpGetJson(url, timeoutMs) {
+  return new Promise((resolve) => {
+    const req = http.get(url, { timeout: timeoutMs }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return resolve(null);
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+}
+
+/** Retorna a porta do primeiro Tokalytics que responder a /api/health, ou 0. */
+async function findTokalyticsPort() {
+  for (let p = PORT_MIN; p <= PORT_MAX; p++) {
+    const j = await httpGetJson(`http://127.0.0.1:${p}/api/health`, 400);
+    if (j && j.service === SERVICE_NAME) return p;
+  }
+  return 0;
+}
+
+function httpPostShutdown(port) {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: '/api/shutdown',
+        method: 'POST',
+        timeout: 4000,
+      },
+      () => resolve()
+    );
+    req.on('error', () => resolve());
+    req.on('timeout', () => {
+      req.destroy();
+      resolve();
+    });
+    req.end();
+  });
+}
+
+/**
+ * Encerra instância em execução (npm update / install -g) antes de sobrescrever bin/tokalytics.
+ * Usa HTTP local — não depende do shim `tokalytics` no PATH.
+ */
+async function stopRunningInstanceBeforeBinaryReplace() {
+  const port = await findTokalyticsPort();
+  if (!port) return;
+  console.log('Tokalytics: encerrando instância em execução antes da atualização...');
+  await httpPostShutdown(port);
+  const deadline = Date.now() + 25000;
+  while (Date.now() < deadline) {
+    const still = await findTokalyticsPort();
+    if (!still) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  console.warn(
+    'Tokalytics: aviso — instância anterior pode ainda estar ativa; se o download falhar, use tokalytics --stop e rode npm de novo.'
+  );
+}
 
 const pkgPath = path.join(__dirname, '..', 'package.json');
 const pkgVersion = (() => {
@@ -128,15 +213,14 @@ function assertReleasePayload(release) {
   }
 }
 
-/** Só em `npm install -g` (npm_config_global). Ignora CI e TOKALYTICS_NO_AUTOSTART=1. */
+/** Só em `npm install -g` / `npm update -g` (npm_config_global). Ignora CI e TOKALYTICS_NO_AUTOSTART=1. */
 function tryLaunchAfterGlobalInstall() {
   if (process.env.CI === 'true') return false;
   if (process.env.TOKALYTICS_NO_AUTOSTART === '1') return false;
-  const g = process.env.npm_config_global;
-  if (g !== 'true' && g !== '1') return false;
+  if (!isGlobalNpmInstall()) return false;
   if (!fs.existsSync(BIN_PATH)) return false;
   try {
-    const child = spawn(BIN_PATH, [], {
+    const child = spawn(BIN_PATH, ['-start'], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
@@ -150,6 +234,10 @@ function tryLaunchAfterGlobalInstall() {
 
 async function install() {
   console.log(`Tokalytics installer v${pkgVersion}: buscando última versão...`);
+
+  if (isGlobalNpmInstall() && process.env.CI !== 'true') {
+    await stopRunningInstanceBeforeBinaryReplace();
+  }
 
   const release = await fetchJson(`https://api.github.com/repos/${REPO}/releases/latest`);
   assertReleasePayload(release);
@@ -171,10 +259,10 @@ async function install() {
   console.log(`Tokalytics ${version} instalado com sucesso!`);
   if (tryLaunchAfterGlobalInstall()) {
     console.log(
-      'Tokalytics iniciado em segundo plano (ícone na barra de menus / bandeja).'
+      'Tokalytics iniciado em segundo plano (tokalytics -start). Encerre com: tokalytics --stop'
     );
   } else {
-    console.log('Execute: tokalytics');
+    console.log('Execute: tokalytics ou tokalytics -start');
   }
 }
 
