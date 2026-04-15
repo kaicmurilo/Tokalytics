@@ -28,7 +28,7 @@ Sem `-dev`, se já existir Tokalytics na faixa de portas, o processo apenas info
 Na raiz do repositório:
 
 ```bash
-go build -o tokalytics main.go
+go build -o tokalytics .
 ```
 
 Isso gera o executável `tokalytics` no diretório atual. Para rodar o app após o build:
@@ -41,7 +41,7 @@ Isso gera o executável `tokalytics` no diretório atual. Para rodar o app após
 
 ```bash
 npm run dev      # go run . -dev
-npm run build    # go build -o tokalytics main.go
+npm run build    # go build -o tokalytics .
 npm run start    # compila e em seguida executa ./tokalytics
 ```
 
@@ -68,6 +68,7 @@ O binário `tokalytics` evita subir uma **segunda** cópia: se já houver uma in
 | Flag / comando | Efeito |
 |----------------|--------|
 | *(nenhuma)* ou `--start` | Inicia menu bar + dashboard se não houver instância; caso contrário, mensagem em stdout. |
+| `--restart` | Reinicia a instância principal em background (com `-dev`, apenas inicia uma nova instância de desenvolvimento). |
 | `--status` | Mostra se há instância rodando, URL, versão da API (`/api/health`) e PID quando o `runstate` bate com a porta. |
 | `--stop` | Encerra a instância em execução (HTTP local `POST /api/shutdown`, só loopback). |
 | `--reload` | Dispara atualização de dados na instância ativa (`GET /api/refresh`). |
@@ -87,8 +88,9 @@ Interface web em abas:
 | **Insights** | Recomendações automáticas com base no período |
 | **Prompts** | Mensagens que mais consumiram tokens |
 | **Sessões** | Lista pesquisável; clique em uma sessão para ver o detalhe (turns, custo por turno) |
+| **Recursos** | Uso de CPU/RAM e armazenamento em disco por ferramenta e pelo host |
 
-O dashboard também detecta **skills/plugins/MCPs** instalados no `Codex` via `~/.codex` e exibe sessões locais gravadas em `~/.codex/sessions`.
+O dashboard também detecta **skills/plugins/MCPs** instalados no `Codex` via `~/.codex` e exibe sessões locais gravadas em `~/.codex/sessions`. No Cursor, as sessões são lidas dos `agent-transcripts` locais do projeto.
 
 Há atalhos para **atualizar dados** e **configurações** (cookies opcionais para APIs em nuvem).
 

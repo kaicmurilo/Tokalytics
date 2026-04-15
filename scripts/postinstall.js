@@ -4,13 +4,17 @@
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 /** Mesma faixa que `pkg/instancectl` (dashboard HTTP). */
 const PORT_MIN = 3456;
 const PORT_MAX = 3555;
 const SERVICE_NAME = 'tokalytics';
+
+const BIN_DIR = path.join(__dirname, '..', 'bin');
+const BIN_PATH = path.join(BIN_DIR, process.platform === 'win32' ? 'tokalytics.exe' : 'tokalytics');
 
 function isGlobalNpmInstall() {
   const g = process.env.npm_config_global;
@@ -58,9 +62,12 @@ function httpPostShutdown(port) {
         port,
         path: '/api/shutdown',
         method: 'POST',
-        timeout: 4000,
+        timeout: 8000,
       },
-      () => resolve()
+      (res) => {
+        res.resume();
+        res.on('end', () => resolve());
+      }
     );
     req.on('error', () => resolve());
     req.on('timeout', () => {
@@ -71,23 +78,122 @@ function httpPostShutdown(port) {
   });
 }
 
+function runstatePath() {
+  return path.join(os.homedir(), '.config', 'tokalytics', 'runstate.json');
+}
+
+function readRunstatePid() {
+  try {
+    const raw = fs.readFileSync(runstatePath(), 'utf8');
+    const j = JSON.parse(raw);
+    const pid = Number(j.pid) || 0;
+    return pid > 0 ? pid : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function isProcessAlive(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM';
+  }
+}
+
+/** Mesmo fluxo que `tokalytics --stop` (usa runstate + HTTP). Só existe em atualização (binário antigo). */
+function tryStopViaExistingBinary() {
+  if (!fs.existsSync(BIN_PATH)) return;
+  console.log('Tokalytics: encerrando instância (binário instalado: --stop)...');
+  spawnSync(BIN_PATH, ['--stop'], {
+    encoding: 'utf8',
+    timeout: 20000,
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+/** Windows costuma manter o .exe bloqueado se o processo não morrer; último recurso. */
+async function tryKillPidForceAsync(pid) {
+  if (!pid || !isProcessAlive(pid)) return;
+  console.warn(`Tokalytics: forçando encerramento do PID ${pid} para liberar o binário...`);
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(pid), '/F', '/T'], {
+      stdio: 'ignore',
+      windowsHide: true,
+      timeout: 15000,
+    });
+    return;
+  }
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch (_) {}
+  await new Promise((r) => setTimeout(r, 500));
+  if (isProcessAlive(pid)) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch (_) {}
+  }
+}
+
+async function waitUntilNoTokalyticsHealth(maxMs) {
+  const deadline = Date.now() + maxMs;
+  while (Date.now() < deadline) {
+    const p = await findTokalyticsPort();
+    if (!p) return true;
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return false;
+}
+
 /**
- * Encerra instância em execução (npm update / install -g) antes de sobrescrever bin/tokalytics.
- * Usa HTTP local — não depende do shim `tokalytics` no PATH.
+ * Encerra instância antes de sobrescrever bin/tokalytics (evita falha de download no Windows
+ * e garante que o autostart use o binário novo).
  */
 async function stopRunningInstanceBeforeBinaryReplace() {
-  const port = await findTokalyticsPort();
-  if (!port) return;
-  console.log('Tokalytics: encerrando instância em execução antes da atualização...');
-  await httpPostShutdown(port);
-  const deadline = Date.now() + 25000;
+  tryStopViaExistingBinary();
+  let gone = await waitUntilNoTokalyticsHealth(28000);
+  if (!gone) {
+    const port = await findTokalyticsPort();
+    if (port) {
+      console.log('Tokalytics: encerrando via HTTP (shutdown)...');
+      await httpPostShutdown(port);
+      gone = await waitUntilNoTokalyticsHealth(12000);
+    }
+  }
+  const pid = readRunstatePid();
+  if (!gone && pid && isProcessAlive(pid)) {
+    await tryKillPidForceAsync(pid);
+    await waitUntilNoTokalyticsHealth(10000);
+  }
+  if (await findTokalyticsPort()) {
+    console.warn(
+      'Tokalytics: aviso — ainda há uma instância respondendo. Se a atualização falhar ou o app não reiniciar, feche o Tokalytics e rode: npm install -g tokalytics'
+    );
+  }
+}
+
+async function waitUntilHealthAppears(maxMs) {
+  const deadline = Date.now() + maxMs;
   while (Date.now() < deadline) {
-    const still = await findTokalyticsPort();
-    if (!still) return;
-    await new Promise((r) => setTimeout(r, 100));
+    const p = await findTokalyticsPort();
+    if (p) return p;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  return 0;
+}
+
+/** Confirma que o autostart (-start) de fato subiu o HTTP. */
+async function confirmAutostartWorked() {
+  const p = await waitUntilHealthAppears(28000);
+  if (p) {
+    console.log(`Tokalytics: confirmado em http://localhost:${p}/`);
+    return;
   }
   console.warn(
-    'Tokalytics: aviso — instância anterior pode ainda estar ativa; se o download falhar, use tokalytics --stop e rode npm de novo.'
+    'Tokalytics: não foi possível confirmar o início automático. Abra um terminal e execute: tokalytics -start'
   );
 }
 
@@ -102,8 +208,6 @@ const pkgVersion = (() => {
 
 // Repositório público no GitHub (nome real: Tokalytics)
 const REPO = 'kaicmurilo/Tokalytics';
-const BIN_DIR = path.join(__dirname, '..', 'bin');
-const BIN_PATH = path.join(BIN_DIR, process.platform === 'win32' ? 'tokalytics.exe' : 'tokalytics');
 
 function getPlatformBinary() {
   const platform = process.platform;
@@ -261,6 +365,7 @@ async function install() {
     console.log(
       'Tokalytics iniciado em segundo plano (tokalytics -start). Encerre com: tokalytics --stop'
     );
+    await confirmAutostartWorked();
   } else {
     console.log('Execute: tokalytics ou tokalytics -start');
   }
