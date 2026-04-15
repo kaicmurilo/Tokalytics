@@ -1,6 +1,6 @@
 {
   "name": "tokalytics",
-  "version": "2.0.13",
+  "version": "2.0.14",
   "description": "Instale globalmente: npm i -g tokalytics. Veja para onde vão seus tokens do Claude Code, Gemini CLI, Cursor e Codex. Reescrito em Go como Tokalytics.",
   "bin": {
     "tokalytics": "bin/run.js"

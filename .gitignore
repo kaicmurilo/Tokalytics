@@ -8,3 +8,7 @@ CLAUDE.md
 .vercel
 .cursor/
 AGENTS.MD
+docs/
+.claude/
+tokalytics
+tokalytics.exe

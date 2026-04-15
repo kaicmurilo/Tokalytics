@@ -324,7 +324,7 @@ function tryLaunchAfterGlobalInstall() {
   if (!isGlobalNpmInstall()) return false;
   if (!fs.existsSync(BIN_PATH)) return false;
   try {
-    const child = spawn(BIN_PATH, ['-start'], {
+    const child = spawn(BIN_PATH, [], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
@@ -363,7 +363,7 @@ async function install() {
   console.log(`Tokalytics ${version} instalado com sucesso!`);
   if (tryLaunchAfterGlobalInstall()) {
     console.log(
-      'Tokalytics iniciado em segundo plano (tokalytics -start). Encerre com: tokalytics --stop'
+      'Tokalytics iniciado com menu bar. Encerre com: tokalytics --stop'
     );
     await confirmAutostartWorked();
   } else {

@@ -45,6 +45,18 @@ var Version = "dev"
 // httpListenPort é a porta efetiva do dashboard (3456+ se a padrão estiver ocupada).
 var httpListenPort atomic.Int32
 
+func openDaemonLog() (*os.File, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(home, ".config", "tokalytics")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, err
+	}
+	return os.OpenFile(filepath.Join(dir, "daemon.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+}
+
 func dashboardPort() int {
 	p := int(httpListenPort.Load())
 	if p > 0 {
@@ -242,7 +254,11 @@ func cmdStartBackground(devMode bool) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = nil
 	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
+	if logFile, logErr := openDaemonLog(); logErr == nil {
+		cmd.Stderr = logFile
+	} else {
+		cmd.Stderr = io.Discard
+	}
 	setDetachChild(cmd)
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("falha ao iniciar em segundo plano: %w", err)
