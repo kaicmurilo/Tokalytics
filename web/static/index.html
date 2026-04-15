@@ -2021,6 +2021,283 @@ function renderStats() {
     </div>`).join('');
 }
 
+// ─── Unified Stats Card ───────────────────────────────────────────────────────
+
+var USC_FILTER = 'all';
+var USC_TAB = 'overview';
+
+function uscFilterDate(period) {
+  if (period === 'all') return null;
+  var days = period === '30d' ? 30 : 7;
+  var d = new Date();
+  d.setDate(d.getDate() - days + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function computeFilteredStats(period) {
+  var cutoff = uscFilterDate(period);
+  var daily = (DATA.dailyUsage || []).filter(function(d) {
+    return !cutoff || d.date >= cutoff;
+  });
+  var sessions = (DATA.sessions || []).filter(function(s) {
+    var sd = (s.date || s.timestamp || '').slice(0, 10);
+    return !cutoff || sd >= cutoff;
+  });
+
+  var totalSessions = sessions.length;
+  var totalQueries = sessions.reduce(function(a, s) { return a + (s.queryCount || 0); }, 0);
+  var totalTokens = sessions.reduce(function(a, s) { return a + (s.totalTokens || 0); }, 0);
+
+  // active days
+  var activeDays = daily.filter(function(d) { return (d.totalTokens || 0) > 0; }).length;
+
+  // streaks
+  var daySet = {};
+  daily.forEach(function(d) { if ((d.totalTokens || 0) > 0) daySet[d.date] = true; });
+
+  var today = new Date();
+  var currentStreak = 0;
+  for (var i = 0; i < 365; i++) {
+    var dd = new Date(today);
+    dd.setDate(dd.getDate() - i);
+    var key = dd.toISOString().slice(0, 10);
+    if (daySet[key]) { currentStreak++; }
+    else if (i > 0) { break; }
+  }
+
+  var longestStreak = 0;
+  var runStreak = 0;
+  var sortedDays = Object.keys(daySet).sort();
+  for (var j = 0; j < sortedDays.length; j++) {
+    if (j === 0) {
+      runStreak = 1;
+    } else {
+      var prev = new Date(sortedDays[j - 1]);
+      var curr = new Date(sortedDays[j]);
+      var diff = Math.round((curr - prev) / 86400000);
+      runStreak = (diff === 1) ? runStreak + 1 : 1;
+    }
+    if (runStreak > longestStreak) longestStreak = runStreak;
+  }
+
+  // peak hour
+  var hourCounts = {};
+  sessions.forEach(function(s) {
+    var ts = s.timestamp || '';
+    if (!ts) return;
+    var d2 = new Date(ts);
+    if (isNaN(d2.getTime())) return;
+    var h = d2.getHours();
+    hourCounts[h] = (hourCounts[h] || 0) + 1;
+  });
+  var peakHour = null;
+  var peakCount = 0;
+  Object.keys(hourCounts).forEach(function(h) {
+    if (hourCounts[h] > peakCount) { peakCount = hourCounts[h]; peakHour = parseInt(h, 10); }
+  });
+  var peakHourLabel = peakHour === null ? t('statNoData') :
+    (peakHour === 0 ? '12 AM' : peakHour < 12 ? peakHour + ' AM' : peakHour === 12 ? '12 PM' : (peakHour - 12) + ' PM');
+
+  // favorite model & model breakdown
+  var modelMap = {};
+  sessions.forEach(function(s) {
+    var m = s.model || '';
+    if (!m || m === 'unknown' || m === '<synthetic>') return;
+    if (!modelMap[m]) modelMap[m] = { model: m, totalTokens: 0, sessions: 0, queries: 0, cost: 0 };
+    modelMap[m].totalTokens += s.totalTokens || 0;
+    modelMap[m].sessions += 1;
+    modelMap[m].queries += s.queryCount || 0;
+    modelMap[m].cost += s.cost || 0;
+  });
+  // fallback to global modelBreakdown when filter=all and sessions have no model
+  if (period === 'all' && DATA.modelBreakdown && DATA.modelBreakdown.length && !Object.keys(modelMap).length) {
+    DATA.modelBreakdown.forEach(function(mb) {
+      modelMap[mb.model] = {
+        model: mb.model,
+        totalTokens: mb.totalTokens || 0,
+        sessions: 0, queries: 0, cost: mb.cost || 0
+      };
+    });
+  }
+  var modelBreakdown = Object.values(modelMap).sort(function(a, b) { return b.totalTokens - a.totalTokens; });
+  var favModel = modelBreakdown.length ? modelBreakdown[0].model : t('statNoData');
+
+  return {
+    totalSessions: totalSessions,
+    totalQueries: totalQueries,
+    totalTokens: totalTokens,
+    activeDays: activeDays,
+    currentStreak: currentStreak,
+    longestStreak: longestStreak,
+    peakHourLabel: peakHourLabel,
+    favModel: favModel,
+    daily: daily,
+    modelBreakdown: modelBreakdown,
+  };
+}
+
+function renderUscMetrics(stats) {
+  var items = [
+    { label: t('statConversations'), value: fmtFull(stats.totalSessions) },
+    { label: t('statMessages'), value: fmtFull(stats.totalQueries) },
+    { label: t('statTotalUsage'), value: fmt(stats.totalTokens) },
+    { label: t('statActiveDays'), value: String(stats.activeDays) },
+    { label: t('statCurrentStreak'), value: t('statStreakDays', { n: String(stats.currentStreak) }) },
+    { label: t('statLongestStreak'), value: t('statStreakDays', { n: String(stats.longestStreak) }) },
+    { label: t('statPeakHour'), value: stats.peakHourLabel },
+    { label: t('statFavoriteModel'), value: stats.favModel },
+  ];
+  document.getElementById('uscMetrics').innerHTML = items.map(function(item) {
+    return '<div class="usc-metric">' +
+      '<div class="usc-metric-label">' + escapeHtml(item.label) + '</div>' +
+      '<div class="usc-metric-value">' + escapeHtml(item.value) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderUscHeatmap(daily) {
+  var dayMap = {};
+  daily.forEach(function(d) { dayMap[d.date] = d.totalTokens || 0; });
+
+  var maxTokens = 0;
+  daily.forEach(function(d) { if ((d.totalTokens || 0) > maxTokens) maxTokens = d.totalTokens; });
+
+  // Build 52-week grid ending on the Saturday of the current week
+  var today = new Date();
+  var endDay = new Date(today);
+  var dow = endDay.getDay();
+  endDay.setDate(endDay.getDate() + (6 - dow));
+
+  var startDay = new Date(endDay);
+  startDay.setDate(startDay.getDate() - 52 * 7 + 1);
+
+  var cols = [];
+  var cursor = new Date(startDay);
+  while (cursor <= endDay) {
+    var col = [];
+    for (var d = 0; d < 7; d++) {
+      var dateStr = cursor.toISOString().slice(0, 10);
+      var tokens = dayMap[dateStr] || 0;
+      var isFuture = cursor > today;
+      var level = 0;
+      if (!isFuture && tokens > 0 && maxTokens > 0) {
+        var ratio = tokens / maxTokens;
+        level = ratio > 0.75 ? 4 : ratio > 0.5 ? 3 : ratio > 0.25 ? 2 : 1;
+      }
+      var tip = isFuture ? '' : (tokens > 0
+        ? t('heatmapTooltip', { date: dateStr, n: fmt(tokens) })
+        : t('heatmapNoActivity') + ' · ' + dateStr);
+      col.push({ level: level, tip: tip, isFuture: isFuture });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    cols.push(col);
+  }
+
+  document.getElementById('uscHeatmap').innerHTML = cols.map(function(col) {
+    return '<div class="usc-heatmap-col">' +
+      col.map(function(cell) {
+        var style = cell.isFuture ? ' style="opacity:0.25"' : '';
+        var tip = cell.tip ? ' data-tip="' + escapeHtml(cell.tip) + '"' : '';
+        return '<div class="usc-heatmap-cell usc-heatmap-l' + cell.level + '"' + tip + style + '></div>';
+      }).join('') +
+      '</div>';
+  }).join('');
+}
+
+function renderUscComparison(totalTokens) {
+  var el = document.getElementById('uscComparison');
+  if (totalTokens <= 0) { el.innerHTML = ''; return; }
+
+  var comparisons = [
+    function(n) { var x = Math.round(n / 500000); return x > 0 ? 'Tokens suficientes para ler a saga <em>Harry Potter</em> completa <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 430000); return x > 0 ? 'Equivale a ler <em>Dom Quixote</em> de capa a capa <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 500000); return x > 0 ? 'Como ler <em>O Senhor dos Anéis</em> completo <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 780000); return x > 0 ? 'Equivale a ler a <em>Bíblia</em> inteira <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 15000); return x > 0 ? 'Como escrever <strong>' + x + '</strong> roteiros de <em>Star Wars</em>' : null; },
+    function(n) { var x = Math.round(n / 14000); return x > 0 ? 'Suficiente para escrever <strong>' + x + '</strong> roteiros de <em>Pulp Fiction</em>' : null; },
+    function(n) { var x = Math.round(n / 15); return x > 0 ? 'Como enviar <strong>' + fmtFull(x) + '</strong> mensagens no WhatsApp' : null; },
+    function(n) { var x = Math.round(n / 30); return x > 0 ? 'Equivale a <strong>' + fmtFull(x) + '</strong> tweets' : null; },
+    function(n) { var x = Math.round(n / 200); return x > 0 ? 'Como escrever <strong>' + fmtFull(x) + '</strong> e-mails' : null; },
+    function(n) { var x = Math.round(n / 900); return x > 0 ? 'Suficiente para ler <strong>' + fmtFull(x) + '</strong> artigos da Wikipedia' : null; },
+    function(n) { var x = Math.round(n / 500); return x > 0 ? 'Como ler <strong>' + fmtFull(x) + '</strong> artigos de jornal' : null; },
+    function(n) { var x = Math.round(n / 77000); return x > 0 ? 'Equivale a ler <em>Harry Potter e a Pedra Filosofal</em> <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 120000); return x > 0 ? 'Como ler <em>Orgulho e Preconceito</em> <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 50000); return x > 0 ? 'Equivale a ler <em>O Grande Gatsby</em> <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 180000); return x > 0 ? 'Como ler <em>Guerra e Paz</em> <strong>' + x + '×</strong>' : null; },
+    function(n) { var x = Math.round(n / 10000); return x > 0 ? 'Suficiente para escrever <strong>' + x + '</strong> músicas do tamanho de <em>Bohemian Rhapsody</em>' : null; },
+  ];
+
+  // Fisher-Yates shuffle
+  var pool = comparisons.slice();
+  for (var i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+  }
+  var text = null;
+  for (var k = 0; k < pool.length; k++) {
+    text = pool[k](totalTokens);
+    if (text) break;
+  }
+  el.innerHTML = text ? text : '';
+}
+
+function renderUscModels(modelBreakdown, totalTokens) {
+  var el = document.getElementById('uscModelsList');
+  if (!modelBreakdown.length) {
+    el.innerHTML = '<div style="color:var(--text-tertiary);font-size:14px;text-align:center;padding:24px 0">' + escapeHtml(t('statNoData')) + '</div>';
+    return;
+  }
+  var maxTok = modelBreakdown[0].totalTokens;
+  el.innerHTML = modelBreakdown.map(function(m) {
+    var pct = totalTokens > 0 ? Math.round(m.totalTokens / totalTokens * 100) : 0;
+    var barPct = maxTok > 0 ? Math.round(m.totalTokens / maxTok * 100) : 0;
+    return '<div class="usc-model-card">' +
+      '<div class="usc-model-header">' +
+        '<span class="usc-model-name">' + escapeHtml(m.model) + '</span>' +
+        '<span class="usc-model-pct">' + escapeHtml(t('modelCardOfTotal', { n: String(pct) })) + '</span>' +
+      '</div>' +
+      '<div class="usc-model-bar-bg"><div class="usc-model-bar-fill" style="width:' + barPct + '%"></div></div>' +
+      '<div class="usc-model-stats">' +
+        '<div class="usc-model-stat">' + escapeHtml(t('modelCardTokens', { n: fmt(m.totalTokens) })) + '</div>' +
+        '<div class="usc-model-stat">' + escapeHtml(t('modelCardSessions', { n: String(m.sessions) })) + '</div>' +
+        '<div class="usc-model-stat">' + escapeHtml(t('modelCardMessages', { n: String(m.queries) })) + '</div>' +
+        '<div class="usc-model-stat">$' + (m.cost || 0).toFixed(4) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderStatsCard() {
+  var stats = computeFilteredStats(USC_FILTER);
+  renderUscMetrics(stats);
+  renderUscHeatmap(stats.daily);
+  renderUscComparison(stats.totalTokens);
+  renderUscModels(stats.modelBreakdown, stats.totalTokens);
+}
+
+function initStatsCard() {
+  document.querySelectorAll('[data-usc-tab]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      USC_TAB = this.dataset.uscTab;
+      document.querySelectorAll('[data-usc-tab]').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      document.querySelectorAll('.usc-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      var panelId = 'uscPanel' + USC_TAB.charAt(0).toUpperCase() + USC_TAB.slice(1);
+      var panel = document.getElementById(panelId);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('[data-usc-filter]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      USC_FILTER = this.dataset.uscFilter;
+      document.querySelectorAll('[data-usc-filter]').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      renderStatsCard();
+    });
+  });
+}
+
 // Insights
 function renderInsights() {
   const insights = DATA.insights || [];
