@@ -1898,31 +1898,6 @@ function renderProviders() {
     }
   }
 
-  if (local.totalTokens > 0) {
-    const loc = local;
-    const sessWord = loc.sessions !== 1 ? t('providerSessions') : t('providerSession');
-    cards.push(`
-      <div class="provider-card animate fade-in">
-        <div class="provider-header">
-          <span class="provider-name">📁 ${t('providerLocalToday')}</span>
-          <span class="provider-pct" style="color:var(--indigo)">${fmt(loc.totalTokens)}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-secondary);line-height:1.6">
-          ${t('providerInOut', { inn: fmt(loc.inputTokens), cached: fmt(loc.cacheReadTokens), out: fmt(loc.outputTokens) })}
-        </div>
-        <div class="provider-reset">${t('providerEstimated', { cost: loc.totalCost.toFixed(4), sessions: String(loc.sessions), sessWord: sessWord })}</div>
-      </div>`);
-  } else if (!hasCloudProviders) {
-    cards.push(`
-      <div class="provider-card animate fade-in">
-        <div class="provider-header">
-          <span class="provider-name">📁 ${t('providerLocal')}</span>
-          <span class="provider-pct" style="color:var(--text-tertiary)">—</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-tertiary)">${t('providerNoSessionsToday')}</div>
-        <div class="provider-reset">${t('providerUseClaude')}</div>
-      </div>`);
-  }
 
   slot.innerHTML = cards.length
     ? '<div class="providers-inner">' + cards.join('') + '</div>'
