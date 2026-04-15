@@ -1282,6 +1282,8 @@
         <button type="button" class="usc-filter active" data-usc-filter="all" data-i18n="statsFilterAll">All</button>
         <button type="button" class="usc-filter" data-usc-filter="30d" data-i18n="statsFilter30d">30d</button>
         <button type="button" class="usc-filter" data-usc-filter="7d" data-i18n="statsFilter7d">7d</button>
+        <button type="button" class="usc-filter" data-usc-filter="today" data-i18n="statsFilterToday">Today</button>
+        <button type="button" class="usc-filter" data-usc-filter="yesterday" data-i18n="statsFilterYesterday">Yesterday</button>
       </div>
     </div>
     <div class="usc-body">
@@ -1983,21 +1985,32 @@ var USC_FILTER = 'all';
 var USC_TAB = 'overview';
 
 function uscFilterDate(period) {
-  if (period === 'all') return null;
+  if (period === 'all') return { from: null, to: null };
+  var today = new Date();
+  var todayStr = today.toISOString().slice(0, 10);
+  if (period === 'today') return { from: todayStr, to: todayStr };
+  if (period === 'yesterday') {
+    var y = new Date(today); y.setDate(y.getDate() - 1);
+    var yStr = y.toISOString().slice(0, 10);
+    return { from: yStr, to: yStr };
+  }
   var days = period === '30d' ? 30 : 7;
-  var d = new Date();
-  d.setDate(d.getDate() - days + 1);
-  return d.toISOString().slice(0, 10);
+  var d = new Date(today); d.setDate(d.getDate() - days + 1);
+  return { from: d.toISOString().slice(0, 10), to: null };
 }
 
 function computeFilteredStats(period) {
-  var cutoff = uscFilterDate(period);
+  var range = uscFilterDate(period);
   var daily = (DATA.dailyUsage || []).filter(function(d) {
-    return !cutoff || d.date >= cutoff;
+    if (range.from && d.date < range.from) return false;
+    if (range.to && d.date > range.to) return false;
+    return true;
   });
   var sessions = (DATA.sessions || []).filter(function(s) {
     var sd = (s.date || s.timestamp || '').slice(0, 10);
-    return !cutoff || sd >= cutoff;
+    if (range.from && sd < range.from) return false;
+    if (range.to && sd > range.to) return false;
+    return true;
   });
 
   var totalSessions = sessions.length;
