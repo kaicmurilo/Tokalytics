@@ -1874,6 +1874,7 @@ function render() {
   renderWarnings();
   renderProviders();
   renderStats();
+  initStatsCard();
   renderInsights();
   renderDailyChart();
   renderModelChart();
@@ -1998,27 +1999,7 @@ function renderStats() {
   const tot = DATA.totals;
   const range = tot.dateRange ? `${formatDate(tot.dateRange.from)} - ${formatDate(tot.dateRange.to)}` : '';
   document.getElementById('dateRange').textContent = range;
-
-  const avgTokensPerMsg = tot.totalQueries > 0 ? Math.round(tot.totalTokens / tot.totalQueries) : 0;
-
-  const cards = [
-    { label: t('statTotalUsage'), value: fmt(tot.totalTokens), sub: t('statSubTokensBreakdown', {
-        input: fmt(tot.totalInputTokens), cw: fmt(tot.totalCacheCreationTokens || 0), cr: fmt(tot.totalCacheReadTokens || 0), out: fmt(tot.totalOutputTokens) }),
-      tip: t('statTotalUsageTip') },
-    { label: t('statConversations'), value: fmtFull(tot.totalSessions), sub: t('statSubAvgSession', { n: fmt(tot.avgTokensPerSession) }),
-      tip: t('statConversationsTip') },
-    { label: t('statMessages'), value: fmtFull(tot.totalQueries), sub: t('statSubAvgMsg', { n: fmt(avgTokensPerMsg) }),
-      tip: t('statMessagesTip') },
-    { label: t('statCacheHit'), value: `${((tot.cacheHitRate || 0) * 100).toFixed(0)}%`, sub: t('statSubCache', { n: fmt(tot.totalCacheReadTokens || 0) }),
-      tip: t('statCacheHitTip') },
-  ];
-
-  document.getElementById('statsRow').innerHTML = cards.map((c, i) => `
-    <div class="stat-card animate delay-${i + 1}">
-      <div class="stat-label has-tooltip">${c.label}<span class="help-icon">?</span><div class="tooltip">${c.tip}</div></div>
-      <div class="stat-value">${c.value}</div>
-      <div class="stat-sub">${c.sub}</div>
-    </div>`).join('');
+  renderStatsCard();
 }
 
 // ─── Unified Stats Card ───────────────────────────────────────────────────────
