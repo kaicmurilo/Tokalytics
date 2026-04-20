@@ -3,6 +3,7 @@ package providers
 import (
 	"bufio"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -475,6 +476,18 @@ func getCursorDir() string {
 	return filepath.Join(home, ".cursor")
 }
 
+// cursorTranscriptSessionSlug gera um identificador estável a partir do caminho relativo
+// a .../agent-transcripts/. Preserva o formato legado cursor-<uuid> para <uuid>/<uuid>.jsonl.
+func cursorTranscriptSessionSlug(relPath string) string {
+	rel := filepath.ToSlash(relPath)
+	relKey := strings.TrimSuffix(rel, ".jsonl")
+	parts := strings.Split(relKey, "/")
+	if len(parts) == 2 && parts[0] == parts[1] {
+		return parts[0]
+	}
+	return strings.ReplaceAll(relKey, "/", "-")
+}
+
 func ParseCursorSessions() []Session {
 	dir := getCursorDir()
 	projectsDir := filepath.Join(dir, "projects")
@@ -496,30 +509,33 @@ func ParseCursorSessions() []Session {
 			continue
 		}
 
-		sessionDirs, _ := os.ReadDir(transcriptsDir)
-		for _, sDir := range sessionDirs {
-			var jsonlPath, sessionKey string
-			if sDir.IsDir() {
-				sessionKey = sDir.Name()
-				jsonlPath = filepath.Join(transcriptsDir, sessionKey, sessionKey+".jsonl")
-			} else if strings.HasSuffix(sDir.Name(), ".jsonl") {
-				sessionKey = strings.TrimSuffix(sDir.Name(), ".jsonl")
-				jsonlPath = filepath.Join(transcriptsDir, sDir.Name())
-			} else {
-				continue
+		_ = filepath.WalkDir(transcriptsDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
 			}
-
-			rawEntries, err := ParseJSONLFile(jsonlPath)
+			if !strings.EqualFold(filepath.Ext(d.Name()), ".jsonl") {
+				return nil
+			}
+			rel, err := filepath.Rel(transcriptsDir, path)
 			if err != nil {
-				continue
+				return nil
+			}
+			sessionKey := cursorTranscriptSessionSlug(rel)
+
+			rawEntries, err := ParseJSONLFile(path)
+			if err != nil {
+				return nil
 			}
 
-			info, _ := sDir.Info()
-			dateStr := info.ModTime().Format("2006-01-02T15:04:05Z")
+			info, _ := d.Info()
+			dateStr := ""
+			if info != nil {
+				dateStr = info.ModTime().Format("2006-01-02T15:04:05Z")
+			}
 
 			queries := extractQueries(rawEntries)
 			if len(queries) == 0 {
-				continue
+				return nil
 			}
 
 			firstTimestamp := ""
@@ -568,7 +584,8 @@ func ParseCursorSessions() []Session {
 				}
 			}
 			sessions = append(sessions, sess)
-		}
+			return nil
+		})
 	}
 	return sessions
 }
