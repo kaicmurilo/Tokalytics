@@ -388,8 +388,15 @@ func registerProviders() {
 	providers.Register(&providers.GeminiProvider{})
 	log.Println("Gemini provider registrado.")
 
-	// Codex CLI: register when local config/session dir exists
-	if _, err := os.Stat(filepath.Join(providersPathHome(), ".codex")); err == nil {
+	// Codex CLI: register when local config/session dir exists (Linux home e perfil Windows em WSL)
+	codexFound := false
+	for _, h := range utils.DataHomeRoots() {
+		if _, err := os.Stat(filepath.Join(h, ".codex")); err == nil {
+			codexFound = true
+			break
+		}
+	}
+	if codexFound {
 		providers.Register(&providers.CodexProvider{})
 		log.Println("Codex provider registrado.")
 	} else {
@@ -414,9 +421,23 @@ func registerProviders() {
 	}
 }
 
-func providersPathHome() string {
-	home, _ := os.UserHomeDir()
-	return home
+func collectMergedStrings(homes []string, read func(string) []string) []string {
+	seen := map[string]struct{}{}
+	var acc []string
+	for _, h := range homes {
+		for _, s := range read(h) {
+			if s == "" {
+				continue
+			}
+			if _, ok := seen[s]; ok {
+				continue
+			}
+			seen[s] = struct{}{}
+			acc = append(acc, s)
+		}
+	}
+	sort.Strings(acc)
+	return acc
 }
 
 func readClaudePlugins(home string) []string {
@@ -817,33 +838,40 @@ func startHTTPServer() {
 
 	http.HandleFunc("/api/plugins", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		home, err := os.UserHomeDir()
-		if err != nil {
+		homes := utils.DataHomeRoots()
+		if len(homes) == 0 {
 			http.Error(w, `{"error":"could not find home dir"}`, 500)
 			return
 		}
 		result := map[string]interface{}{
 			"claude": map[string]interface{}{
-				"plugins": readClaudePlugins(home),
-				"mcps":    readClaudeMCPs(home),
-				"skills":  readClaudeSkills(home),
+				"plugins": collectMergedStrings(homes, readClaudePlugins),
+				"mcps":    collectMergedStrings(homes, readClaudeMCPs),
+				"skills":  collectMergedStrings(homes, readClaudeSkills),
 			},
 			"cursor": map[string]interface{}{
 				"plugins": []string{},
-				"mcps":    readCursorMCPs(home),
-				"skills":  readCursorSkills(home),
+				"mcps":    collectMergedStrings(homes, readCursorMCPs),
+				"skills":  collectMergedStrings(homes, readCursorSkills),
 			},
 			"gemini": map[string]interface{}{
-				"plugins": readGeminiExtensions(home),
+				"plugins": collectMergedStrings(homes, readGeminiExtensions),
 				"mcps":    []string{},
-				"skills":  readGeminiSkills(home),
+				"skills":  collectMergedStrings(homes, readGeminiSkills),
 			},
 		}
-		if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
+		codexAny := false
+		for _, h := range homes {
+			if _, err := os.Stat(filepath.Join(h, ".codex")); err == nil {
+				codexAny = true
+				break
+			}
+		}
+		if codexAny {
 			result["codex"] = map[string]interface{}{
-				"plugins": readCodexPlugins(home),
-				"mcps":    readCodexMCPs(home),
-				"skills":  readCodexSkills(home),
+				"plugins": collectMergedStrings(homes, readCodexPlugins),
+				"mcps":    collectMergedStrings(homes, readCodexMCPs),
+				"skills":  collectMergedStrings(homes, readCodexSkills),
 			}
 		}
 		json.NewEncoder(w).Encode(result)

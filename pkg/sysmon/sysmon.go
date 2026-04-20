@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
@@ -191,9 +192,10 @@ func Collect() Snapshot {
 		{ID: "claude", Label: "Claude Code"},
 		{ID: "gemini", Label: "Gemini CLI"},
 	}
-	if home, err := os.UserHomeDir(); err == nil {
+	for _, home := range utils.DataHomeRoots() {
 		if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
 			tools = append(tools, ToolBucket{ID: "codex", Label: "Codex"})
+			break
 		}
 	}
 	snap := Snapshot{

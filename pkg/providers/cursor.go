@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"time"
 )
 
@@ -196,18 +197,28 @@ func (p *CursorLocalProvider) FetchUsage() (*Usage, error) {
 		TotalLimit: 100,
 	}
 
-	// Calcula total de requests do mês
+	// Calcula total de requests do mês e lista por modelo (auth/usage)
 	var totalRequests int
+	var modelReqs []ModelRequestStat
 	for model, raw := range usageData {
 		if model == "startOfMonth" {
 			continue
 		}
 		if entry, ok := raw.(map[string]interface{}); ok {
 			if n, ok := entry["numRequests"].(float64); ok {
-				totalRequests += int(n)
+				c := int(n)
+				totalRequests += c
+				modelReqs = append(modelReqs, ModelRequestStat{Model: model, Requests: c})
 			}
 		}
 	}
+	sort.Slice(modelReqs, func(i, j int) bool {
+		if modelReqs[i].Requests != modelReqs[j].Requests {
+			return modelReqs[i].Requests > modelReqs[j].Requests
+		}
+		return modelReqs[i].Model < modelReqs[j].Model
+	})
+	u.ModelRequests = modelReqs
 
 	// Extrai data de início do mês para reset
 	var monthStart time.Time

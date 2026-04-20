@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 const (
@@ -107,10 +109,20 @@ func discoverGeminiSecrets() (string, string, error) {
 }
 
 func getGeminiAccountInfo() (string, string, error) {
-	home, _ := os.UserHomeDir()
-	path := filepath.Join(home, geminiOAuthCredsPath)
-
-	data, err := os.ReadFile(path)
+	homes := utils.DataHomeRoots()
+	if len(homes) == 0 {
+		return "", "", fmt.Errorf("gemini oauth: no home directory")
+	}
+	var path string
+	var data []byte
+	var err error
+	for _, home := range homes {
+		path = filepath.Join(home, geminiOAuthCredsPath)
+		data, err = os.ReadFile(path)
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return "", "", err
 	}

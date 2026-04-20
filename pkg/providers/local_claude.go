@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 // Model pricing per token (Anthropic API equivalent estimates)
@@ -124,120 +126,109 @@ func ParseJSONLFile(filePath string) ([]map[string]interface{}, error) {
 	return lines, scanner.Err()
 }
 
-func getClaudeDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".claude")
-}
-
 // ParseClaudeSessions varre ~/.claude e retorna as sessões
 func ParseClaudeSessions() []Session {
-	dir := getClaudeDir()
-	if dir == "" {
-		return nil
-	}
-
 	var sessions []Session
-	projectsDir := filepath.Join(dir, "projects")
+	for _, homeRoot := range utils.DataHomeRoots() {
+		dir := filepath.Join(homeRoot, ".claude")
+		projectsDir := filepath.Join(dir, "projects")
 
-	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
-		return nil
-	}
-
-	// Walk projects
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return nil
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
+		if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
 			continue
 		}
 
-		projectPath := filepath.Join(projectsDir, entry.Name())
-		files, _ := os.ReadDir(projectPath)
+		entries, err := os.ReadDir(projectsDir)
+		if err != nil {
+			continue
+		}
 
-		for _, file := range files {
-			if filepath.Ext(file.Name()) != ".jsonl" {
+		for _, entry := range entries {
+			if !entry.IsDir() {
 				continue
 			}
 
-			filePath := filepath.Join(projectPath, file.Name())
-			sessionID := strings.TrimSuffix(file.Name(), ".jsonl")
+			projectPath := filepath.Join(projectsDir, entry.Name())
+			files, _ := os.ReadDir(projectPath)
 
-			rawEntries, err := ParseJSONLFile(filePath)
-			if err != nil {
-				continue
-			}
-
-			info, _ := file.Info()
-			dateStr := info.ModTime().Format("2006-01-02T15:04:05Z")
-
-			queries := extractQueries(rawEntries)
-			if len(queries) == 0 {
-				continue
-			}
-
-			// Use first timestamp from entries as the session date
-			firstTimestamp := ""
-			for _, e := range rawEntries {
-				if ts, ok := e["timestamp"].(string); ok && ts != "" {
-					firstTimestamp = ts
-					break
+			for _, file := range files {
+				if filepath.Ext(file.Name()) != ".jsonl" {
+					continue
 				}
-			}
-			if firstTimestamp != "" {
-				dateStr = firstTimestamp
-			}
-			date := dateStr
-			if len(date) >= 10 {
-				date = date[:10]
-			}
 
-			session := Session{
-				SessionID:  sessionID,
-				Project:    entry.Name(),
-				Date:       date,
-				Timestamp:  firstTimestamp,
-				QueryCount: len(queries),
-				Queries:    queries,
-			}
+				filePath := filepath.Join(projectPath, file.Name())
+				sessionID := strings.TrimSuffix(file.Name(), ".jsonl")
 
-			// Aggregate session totals + pick primary model
-			modelCounts := map[string]int{}
-			for _, q := range queries {
-				session.InputTokens += q.InputTokens
-				session.OutputTokens += q.OutputTokens
-				session.CacheCreationTokens += q.CacheCreationTokens
-				session.CacheReadTokens += q.CacheReadTokens
-				session.TotalTokens += q.TotalTokens
-				session.Cost += q.Cost
-				if q.Model != "" && q.Model != "<synthetic>" {
-					modelCounts[q.Model]++
+				rawEntries, err := ParseJSONLFile(filePath)
+				if err != nil {
+					continue
 				}
-				if session.FirstPrompt == "" && q.UserPrompt != "" {
-					session.FirstPrompt = q.UserPrompt
-					if len(session.FirstPrompt) > 200 {
-						session.FirstPrompt = session.FirstPrompt[:200]
+
+				info, _ := file.Info()
+				dateStr := info.ModTime().Format("2006-01-02T15:04:05Z")
+
+				queries := extractQueries(rawEntries)
+				if len(queries) == 0 {
+					continue
+				}
+
+				// Use first timestamp from entries as the session date
+				firstTimestamp := ""
+				for _, e := range rawEntries {
+					if ts, ok := e["timestamp"].(string); ok && ts != "" {
+						firstTimestamp = ts
+						break
 					}
 				}
-			}
-			// Primary model = most frequent
-			bestCount := 0
-			for m, c := range modelCounts {
-				if c > bestCount {
-					bestCount = c
-					session.Model = m
+				if firstTimestamp != "" {
+					dateStr = firstTimestamp
 				}
-			}
-			if session.FirstPrompt == "" {
-				session.FirstPrompt = "(sem prompt)"
-			}
+				date := dateStr
+				if len(date) >= 10 {
+					date = date[:10]
+				}
 
-			sessions = append(sessions, session)
+				session := Session{
+					SessionID:  sessionID,
+					Project:    entry.Name(),
+					Date:       date,
+					Timestamp:  firstTimestamp,
+					QueryCount: len(queries),
+					Queries:    queries,
+				}
+
+				// Aggregate session totals + pick primary model
+				modelCounts := map[string]int{}
+				for _, q := range queries {
+					session.InputTokens += q.InputTokens
+					session.OutputTokens += q.OutputTokens
+					session.CacheCreationTokens += q.CacheCreationTokens
+					session.CacheReadTokens += q.CacheReadTokens
+					session.TotalTokens += q.TotalTokens
+					session.Cost += q.Cost
+					if q.Model != "" && q.Model != "<synthetic>" {
+						modelCounts[q.Model]++
+					}
+					if session.FirstPrompt == "" && q.UserPrompt != "" {
+						session.FirstPrompt = q.UserPrompt
+						if len(session.FirstPrompt) > 200 {
+							session.FirstPrompt = session.FirstPrompt[:200]
+						}
+					}
+				}
+				// Primary model = most frequent
+				bestCount := 0
+				for m, c := range modelCounts {
+					if c > bestCount {
+						bestCount = c
+						session.Model = m
+					}
+				}
+				if session.FirstPrompt == "" {
+					session.FirstPrompt = "(sem prompt)"
+				}
+
+				sessions = append(sessions, session)
+			}
 		}
 	}
 
@@ -341,6 +332,9 @@ func extractQueries(entries []map[string]interface{}) []Query {
 					usage, _ = entry["usage"].(map[string]interface{})
 				}
 				model, _ := msg["model"].(string)
+				if model == "" {
+					model, _ = entry["model"].(string)
+				}
 
 				if model == "<synthetic>" {
 					continue
@@ -468,12 +462,15 @@ func GetTodayStats() TodayStats {
 	return stats
 }
 
-func getCursorDir() string {
+func cursorAgentDataRoots() []string {
 	if p := strings.TrimSpace(os.Getenv("TOKALYTICS_CURSOR_HOME")); p != "" {
-		return p
+		return []string{filepath.Clean(p)}
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cursor")
+	var roots []string
+	for _, h := range utils.DataHomeRoots() {
+		roots = append(roots, filepath.Join(h, ".cursor"))
+	}
+	return roots
 }
 
 // cursorTranscriptSessionSlug gera um identificador estável a partir do caminho relativo
@@ -489,103 +486,102 @@ func cursorTranscriptSessionSlug(relPath string) string {
 }
 
 func ParseCursorSessions() []Session {
-	dir := getCursorDir()
-	projectsDir := filepath.Join(dir, "projects")
-
 	var sessions []Session
-
-	if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
-		return nil
-	}
-
-	entries, _ := os.ReadDir(projectsDir)
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	for _, dir := range cursorAgentDataRoots() {
+		projectsDir := filepath.Join(dir, "projects")
+		if _, err := os.Stat(projectsDir); os.IsNotExist(err) {
 			continue
 		}
 
-		transcriptsDir := filepath.Join(projectsDir, entry.Name(), "agent-transcripts")
-		if _, err := os.Stat(transcriptsDir); os.IsNotExist(err) {
-			continue
+		entries, _ := os.ReadDir(projectsDir)
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				continue
+			}
+
+			transcriptsDir := filepath.Join(projectsDir, entry.Name(), "agent-transcripts")
+			if _, err := os.Stat(transcriptsDir); os.IsNotExist(err) {
+				continue
+			}
+
+			_ = filepath.WalkDir(transcriptsDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return nil
+				}
+				if !strings.EqualFold(filepath.Ext(d.Name()), ".jsonl") {
+					return nil
+				}
+				rel, err := filepath.Rel(transcriptsDir, path)
+				if err != nil {
+					return nil
+				}
+				sessionKey := cursorTranscriptSessionSlug(rel)
+
+				rawEntries, err := ParseJSONLFile(path)
+				if err != nil {
+					return nil
+				}
+
+				info, _ := d.Info()
+				dateStr := ""
+				if info != nil {
+					dateStr = info.ModTime().Format("2006-01-02T15:04:05Z")
+				}
+
+				queries := extractQueries(rawEntries)
+				if len(queries) == 0 {
+					return nil
+				}
+
+				firstTimestamp := ""
+				for _, e := range rawEntries {
+					if ts, ok := e["timestamp"].(string); ok && ts != "" {
+						firstTimestamp = ts
+						break
+					}
+				}
+				if firstTimestamp != "" {
+					dateStr = firstTimestamp
+				}
+				date := dateStr
+				if len(date) >= 10 {
+					date = date[:10]
+				}
+
+				sess := Session{
+					SessionID:  "cursor-" + sessionKey,
+					Project:    entry.Name(),
+					Date:       date,
+					Timestamp:  firstTimestamp,
+					QueryCount: len(queries),
+					Queries:    queries,
+				}
+				if len(queries) > 0 {
+					sess.FirstPrompt = queries[0].UserPrompt
+				}
+				modelCounts := map[string]int{}
+				for _, q := range queries {
+					sess.InputTokens += q.InputTokens
+					sess.OutputTokens += q.OutputTokens
+					sess.CacheCreationTokens += q.CacheCreationTokens
+					sess.CacheReadTokens += q.CacheReadTokens
+					sess.TotalTokens += q.TotalTokens
+					sess.Cost += q.Cost
+					if q.Model != "" && q.Model != "<synthetic>" {
+						modelCounts[q.Model]++
+					}
+				}
+				bestCount := 0
+				for m, c := range modelCounts {
+					if c > bestCount {
+						bestCount = c
+						sess.Model = m
+					}
+				}
+				sessions = append(sessions, sess)
+				return nil
+			})
 		}
-
-		_ = filepath.WalkDir(transcriptsDir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return nil
-			}
-			if !strings.EqualFold(filepath.Ext(d.Name()), ".jsonl") {
-				return nil
-			}
-			rel, err := filepath.Rel(transcriptsDir, path)
-			if err != nil {
-				return nil
-			}
-			sessionKey := cursorTranscriptSessionSlug(rel)
-
-			rawEntries, err := ParseJSONLFile(path)
-			if err != nil {
-				return nil
-			}
-
-			info, _ := d.Info()
-			dateStr := ""
-			if info != nil {
-				dateStr = info.ModTime().Format("2006-01-02T15:04:05Z")
-			}
-
-			queries := extractQueries(rawEntries)
-			if len(queries) == 0 {
-				return nil
-			}
-
-			firstTimestamp := ""
-			for _, e := range rawEntries {
-				if ts, ok := e["timestamp"].(string); ok && ts != "" {
-					firstTimestamp = ts
-					break
-				}
-			}
-			if firstTimestamp != "" {
-				dateStr = firstTimestamp
-			}
-			date := dateStr
-			if len(date) >= 10 {
-				date = date[:10]
-			}
-
-			sess := Session{
-				SessionID:  "cursor-" + sessionKey,
-				Project:    entry.Name(),
-				Date:       date,
-				Timestamp:  firstTimestamp,
-				QueryCount: len(queries),
-				Queries:    queries,
-			}
-			if len(queries) > 0 {
-				sess.FirstPrompt = queries[0].UserPrompt
-			}
-			modelCounts := map[string]int{}
-			for _, q := range queries {
-				sess.InputTokens += q.InputTokens
-				sess.OutputTokens += q.OutputTokens
-				sess.CacheCreationTokens += q.CacheCreationTokens
-				sess.CacheReadTokens += q.CacheReadTokens
-				sess.TotalTokens += q.TotalTokens
-				sess.Cost += q.Cost
-				if q.Model != "" && q.Model != "<synthetic>" {
-					modelCounts[q.Model]++
-				}
-			}
-			bestCount := 0
-			for m, c := range modelCounts {
-				if c > bestCount {
-					bestCount = c
-					sess.Model = m
-				}
-			}
-			sessions = append(sessions, sess)
-			return nil
-		})
 	}
 	return sessions
 }

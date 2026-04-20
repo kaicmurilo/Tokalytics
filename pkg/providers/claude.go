@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 type ClaudeProvider struct {
@@ -95,12 +97,24 @@ func readClaudeOAuthToken() (string, error) {
 		}
 		raw = strings.TrimSpace(string(out))
 	case "linux":
-		home, _ := os.UserHomeDir()
-		data, err := os.ReadFile(filepath.Join(home, ".claude", ".credentials.json"))
-		if err != nil {
-			return "", fmt.Errorf("linux credentials: %v", err)
+		var lastErr error
+		for _, home := range utils.DataHomeRoots() {
+			p := filepath.Join(home, ".claude", ".credentials.json")
+			data, err := os.ReadFile(p)
+			if err != nil {
+				lastErr = err
+				continue
+			}
+			raw = strings.TrimSpace(string(data))
+			lastErr = nil
+			break
 		}
-		raw = strings.TrimSpace(string(data))
+		if raw == "" {
+			if lastErr != nil {
+				return "", fmt.Errorf("linux credentials: %v", lastErr)
+			}
+			return "", fmt.Errorf("linux credentials: not found")
+		}
 	default:
 		return "", fmt.Errorf("unsupported OS")
 	}
@@ -142,11 +156,11 @@ func fetchClaudeOAuth() (*Usage, error) {
 	}
 
 	var raw struct {
-		FiveHour  *usageWindow `json:"five_hour"`
-		SevenDay  *usageWindow `json:"seven_day"`
-		SevenDayOpus    *usageWindow `json:"seven_day_opus"`
-		SevenDaySonnet  *usageWindow `json:"seven_day_sonnet"`
-		ExtraUsage *struct {
+		FiveHour       *usageWindow `json:"five_hour"`
+		SevenDay       *usageWindow `json:"seven_day"`
+		SevenDayOpus   *usageWindow `json:"seven_day_opus"`
+		SevenDaySonnet *usageWindow `json:"seven_day_sonnet"`
+		ExtraUsage     *struct {
 			IsEnabled    bool    `json:"is_enabled"`
 			MonthlyLimit float64 `json:"monthly_limit"` // cents
 			UsedCredits  float64 `json:"used_credits"`  // cents
@@ -277,7 +291,9 @@ func fetchClaudeWeb(cookieHeader string) (*Usage, error) {
 	u := &Usage{ProviderID: "claude", Name: "Claude", TotalLimit: 100, UpdatedAt: "agora"}
 	if w := parseWebWindow(raw, "five_hour", "Session"); w != nil {
 		u.Windows = append(u.Windows, *w)
-		u.Used = w.PctUsed; u.Remaining = w.PctLeft; u.SessionReset = w.ResetsAt
+		u.Used = w.PctUsed
+		u.Remaining = w.PctLeft
+		u.SessionReset = w.ResetsAt
 	}
 	if w := parseWebWindow(raw, "seven_day", "Weekly"); w != nil {
 		u.Windows = append(u.Windows, *w)
@@ -294,12 +310,16 @@ func parseWebWindow(raw map[string]interface{}, key, label string) *RateWindow {
 	util := 0.0
 	if v, ok := data["utilization"].(float64); ok {
 		util = v
-		if util <= 1.0 { util *= 100 }
+		if util <= 1.0 {
+			util *= 100
+		}
 	}
 	pctLeft := 100 - util
 	w := &RateWindow{Name: label, PctUsed: util, PctLeft: pctLeft}
 	if s, ok := data["resets_at"].(string); ok {
-		if t, err := time.Parse(time.RFC3339, s); err == nil { w.ResetsAt = t }
+		if t, err := time.Parse(time.RFC3339, s); err == nil {
+			w.ResetsAt = t
+		}
 	}
 	return w
 }

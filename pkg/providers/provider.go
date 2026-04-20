@@ -23,6 +23,12 @@ type RateWindow struct {
 	RunsOut  time.Time `json:"runsOut,omitempty"` // projected exhaustion
 }
 
+// ModelRequestStat agrega pedidos da conta Cursor por id de modelo (API auth/usage).
+type ModelRequestStat struct {
+	Model    string `json:"model"`
+	Requests int    `json:"requests"`
+}
+
 // Usage represents the quota usage of a provider
 type Usage struct {
 	ProviderID string `json:"providerID"`
@@ -48,6 +54,9 @@ type Usage struct {
 	TodayTokens     int     `json:"todayTokens,omitempty"`
 	Last30CostUSD   float64 `json:"last30CostUSD,omitempty"`
 	Last30Tokens    int     `json:"last30Tokens,omitempty"`
+
+	// Cursor (JWT): breakdown mensal por modelo, quando a API expõe numRequests.
+	ModelRequests []ModelRequestStat `json:"modelRequests,omitempty"`
 }
 
 // Registry holds all registered providers

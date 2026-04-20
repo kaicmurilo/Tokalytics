@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 type CodexProvider struct{}
@@ -93,9 +95,21 @@ type codexRateMeta struct {
 	timestamp time.Time
 }
 
-func getCodexDir() string {
+func codexDataRoots() []string {
 	if p := strings.TrimSpace(os.Getenv("TOKALYTICS_CODEX_HOME")); p != "" {
-		return p
+		return []string{filepath.Clean(p)}
+	}
+	var out []string
+	for _, h := range utils.DataHomeRoots() {
+		out = append(out, filepath.Join(h, ".codex"))
+	}
+	return out
+}
+
+func getCodexDir() string {
+	roots := codexDataRoots()
+	if len(roots) > 0 {
+		return roots[0]
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".codex")
@@ -106,22 +120,22 @@ func getCodexSessionsDir() string {
 }
 
 func ParseCodexSessions() []Session {
-	base := getCodexSessionsDir()
-	if _, err := os.Stat(base); err != nil {
-		return nil
-	}
-
 	var sessions []Session
-	_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d == nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+	for _, root := range codexDataRoots() {
+		base := filepath.Join(root, "sessions")
+		if _, err := os.Stat(base); err != nil {
+			continue
+		}
+		_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d == nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+				return nil
+			}
+			if s := parseCodexSessionFile(path); s != nil {
+				sessions = append(sessions, *s)
+			}
 			return nil
-		}
-		if s := parseCodexSessionFile(path); s != nil {
-			sessions = append(sessions, *s)
-		}
-		return nil
-	})
-
+		})
+	}
 	return sessions
 }
 
@@ -285,22 +299,23 @@ func parseCodexSessionFile(path string) *Session {
 }
 
 func latestCodexRateMeta() codexRateMeta {
-	base := getCodexSessionsDir()
-	if _, err := os.Stat(base); err != nil {
-		return codexRateMeta{}
-	}
-
 	var latest codexRateMeta
-	_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d == nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+	for _, root := range codexDataRoots() {
+		base := filepath.Join(root, "sessions")
+		if _, err := os.Stat(base); err != nil {
+			continue
+		}
+		_ = filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d == nil || d.IsDir() || filepath.Ext(path) != ".jsonl" {
+				return nil
+			}
+			meta := latestCodexRateMetaFromFile(path)
+			if meta.valid && meta.timestamp.After(latest.timestamp) {
+				latest = meta
+			}
 			return nil
-		}
-		meta := latestCodexRateMetaFromFile(path)
-		if meta.valid && meta.timestamp.After(latest.timestamp) {
-			latest = meta
-		}
-		return nil
-	})
+		})
+	}
 	return latest
 }
 

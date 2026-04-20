@@ -1952,6 +1952,23 @@ function buildProviderCard(id, usage) {
       ${usage.last30CostUSD > 0 ? `<div style="font-size:12px;color:var(--text-secondary)">${t('cost30d', { usd: '<b>$' + usage.last30CostUSD.toFixed(2) + '</b>', tok: fmt(usage.last30Tokens) })}</div>` : ''}
     </div>` : '';
 
+  const modelReqFiltered = (Array.isArray(usage.modelRequests) ? usage.modelRequests : []).filter(function (m) {
+    return m && (m.requests || 0) > 0;
+  });
+  const modelReqHTML = modelReqFiltered.length ? `
+    <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:8px">
+      <div style="font-weight:600;font-size:12px;margin-bottom:4px">${t('cursorModelReqTitle')}</div>
+      <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;line-height:1.35">${t('cursorModelReqHint')}</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--text-secondary);padding:2px 0 6px;border-bottom:1px solid var(--border)">
+        <span>${t('cursorModelReqHdrModel')}</span><span>${t('cursorModelReqHdrRequests')}</span>
+      </div>
+      ${modelReqFiltered.map(function (m) {
+        return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+          '<span style="word-break:break-all;font-family:ui-monospace,Menlo,monospace;color:var(--text-secondary)">' + escapeHtml(String(m.model || '')) + '</span>' +
+          '<span class="num" style="flex-shrink:0">' + (Number(m.requests) || 0).toLocaleString() + '</span></div>';
+      }).join('')}
+    </div>` : '';
+
   const meta = [usage.email, usage.plan].filter(Boolean).join(' · ');
   const updatedAt = usage.updatedAt ? `<span style="font-size:11px;color:var(--text-tertiary)">${t('updatedAt', { at: usage.updatedAt })}</span>` : '';
 
@@ -1967,6 +1984,7 @@ function buildProviderCard(id, usage) {
       <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
         ${windowsHTML}
       </div>
+      ${modelReqHTML}
       ${costHTML}
     </div>`;
 }

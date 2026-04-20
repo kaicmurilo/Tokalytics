@@ -169,35 +169,39 @@ func cursorAppDataDir() string {
 	}
 }
 
-// GetCursorAuthToken lê o accessToken do Cursor diretamente do banco SQLite local.
-// Funciona em todas as plataformas sem precisar de cookie manual.
-func GetCursorAuthToken() (string, error) {
-	appDir := cursorAppDataDir()
-	if appDir == "" {
-		return "", fmt.Errorf("unsupported OS")
+// cursorAppDataDirs lista pastas do Cursor que podem conter User/globalStorage/state.vscdb
+// (~/.config/Cursor no Linux; em WSL também AppData\Roaming\Cursor do Windows).
+func cursorAppDataDirs() []string {
+	seen := map[string]struct{}{}
+	var out []string
+	add := func(p string) {
+		p = filepath.Clean(p)
+		if p == "" {
+			return
+		}
+		if _, ok := seen[p]; ok {
+			return
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
 	}
-	dbPath := filepath.Join(appDir, "User", "globalStorage", "state.vscdb")
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("cursor db not found: %s", dbPath)
+	if main := cursorAppDataDir(); main != "" {
+		add(main)
 	}
+	if runtime.GOOS == "linux" && IsWSL() {
+		if wh := WindowsHomeOnWSL(); wh != "" {
+			add(filepath.Join(wh, "AppData", "Roaming", "Cursor"))
+		}
+	}
+	return out
+}
 
-	// Copia para temp para não travar o arquivo em uso pelo Cursor
-	tmpFile := filepath.Join(os.TempDir(), "tokalytics_cursor_state.db")
-	data, err := os.ReadFile(dbPath)
-	if err != nil {
-		return "", fmt.Errorf("read cursor db: %v", err)
-	}
-	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
-		return "", fmt.Errorf("write tmp cursor db: %v", err)
-	}
-	defer os.Remove(tmpFile)
-
-	db, err := sql.Open("sqlite3", tmpFile+"?immutable=1")
+func scanCursorAccessTokenSQLite(tmpPath string) (string, error) {
+	db, err := sql.Open("sqlite3", tmpPath+"?immutable=1")
 	if err != nil {
 		return "", fmt.Errorf("open cursor db: %v", err)
 	}
 	defer db.Close()
-
 	var token string
 	err = db.QueryRow(`SELECT value FROM ItemTable WHERE key = 'cursorAuth/accessToken' LIMIT 1`).Scan(&token)
 	if err != nil {
@@ -208,6 +212,51 @@ func GetCursorAuthToken() (string, error) {
 		return "", fmt.Errorf("cursor accessToken is empty")
 	}
 	return token, nil
+}
+
+// GetCursorAuthToken lê o accessToken do Cursor diretamente do banco SQLite local.
+// Funciona em todas as plataformas sem precisar de cookie manual.
+func GetCursorAuthToken() (string, error) {
+	dirs := cursorAppDataDirs()
+	if len(dirs) == 0 {
+		return "", fmt.Errorf("unsupported OS")
+	}
+	var lastErr error
+	for _, appDir := range dirs {
+		dbPath := filepath.Join(appDir, "User", "globalStorage", "state.vscdb")
+		if _, err := os.Stat(dbPath); err != nil {
+			lastErr = fmt.Errorf("cursor db not found: %s", dbPath)
+			continue
+		}
+		data, err := os.ReadFile(dbPath)
+		if err != nil {
+			lastErr = fmt.Errorf("read cursor db: %v", err)
+			continue
+		}
+		tmpF, err := os.CreateTemp("", "tokalytics-cursor-*.db")
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		tmpPath := tmpF.Name()
+		_ = tmpF.Close()
+		if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+			_ = os.Remove(tmpPath)
+			lastErr = fmt.Errorf("write tmp cursor db: %v", err)
+			continue
+		}
+		token, err := scanCursorAccessTokenSQLite(tmpPath)
+		_ = os.Remove(tmpPath)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return token, nil
+	}
+	if lastErr != nil {
+		return "", lastErr
+	}
+	return "", fmt.Errorf("cursor accessToken not found in any Cursor data directory")
 }
 
 func decryptCookie(cookiePath, domain, name string, key []byte) (string, error) {

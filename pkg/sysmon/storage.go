@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 // DiskPath é um diretório ou arquivo contado no total em disco da ferramenta.
@@ -27,6 +29,15 @@ var (
 func shortenHome(p, home string) string {
 	if home != "" && strings.HasPrefix(p, home) {
 		return "~" + strings.TrimPrefix(p, home)
+	}
+	return p
+}
+
+func shortenHomeAny(p string, homes []string) string {
+	for _, home := range homes {
+		if home != "" && strings.HasPrefix(p, home) {
+			return "~" + strings.TrimPrefix(p, home)
+		}
 	}
 	return p
 }
@@ -101,8 +112,8 @@ func diskUsageByTool() map[string][]DiskPath {
 		return diskCacheData
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	homes := utils.DataHomeRoots()
+	if len(homes) == 0 {
 		diskCacheData = map[string][]DiskPath{}
 		diskCacheAt = time.Now()
 		return diskCacheData
@@ -111,7 +122,9 @@ func diskUsageByTool() map[string][]DiskPath {
 	next := make(map[string][]DiskPath)
 	for _, id := range []string{"cursor", "claude", "gemini"} {
 		var raw []string
-		appendToolPaths(home, id, &raw)
+		for _, home := range homes {
+			appendToolPaths(home, id, &raw)
+		}
 		seen := map[string]struct{}{}
 		var parts []DiskPath
 		var sum uint64
@@ -130,7 +143,7 @@ func diskUsageByTool() map[string][]DiskPath {
 			}
 			sum += b
 			parts = append(parts, DiskPath{
-				Path:  shortenHome(ap, home),
+				Path:  shortenHomeAny(ap, homes),
 				Bytes: b,
 			})
 		}

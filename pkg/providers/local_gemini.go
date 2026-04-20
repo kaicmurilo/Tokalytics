@@ -6,27 +6,29 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kaicmurilo/tokalytics/pkg/utils"
 )
 
 // GeminiSession holds aggregated data for one Gemini CLI session
 type GeminiSession struct {
-	SessionID   string
-	Project     string
-	Date        string
-	StartTime   time.Time
-	InputTokens int
-	OutputTokens int
-	CachedTokens int
+	SessionID     string
+	Project       string
+	Date          string
+	StartTime     time.Time
+	InputTokens   int
+	OutputTokens  int
+	CachedTokens  int
 	ThoughtTokens int
-	TotalTokens  int
-	Model        string
-	Messages     int
+	TotalTokens   int
+	Model         string
+	Messages      int
 }
 
 type geminiSessionFile struct {
-	SessionID   string    `json:"sessionId"`
-	StartTime   time.Time `json:"startTime"`
-	LastUpdated time.Time `json:"lastUpdated"`
+	SessionID   string          `json:"sessionId"`
+	StartTime   time.Time       `json:"startTime"`
+	LastUpdated time.Time       `json:"lastUpdated"`
 	Messages    []geminiMessage `json:"messages"`
 }
 
@@ -47,32 +49,32 @@ type geminiMessage struct {
 
 // ParseGeminiSessions reads all session files from ~/.gemini/tmp/*/chats/session-*.json
 func ParseGeminiSessions() []GeminiSession {
-	home, _ := os.UserHomeDir()
-	base := filepath.Join(home, ".gemini", "tmp")
-
-	entries, err := os.ReadDir(base)
-	if err != nil {
-		return nil
-	}
-
 	var sessions []GeminiSession
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		project := entry.Name()
-		chatsDir := filepath.Join(base, project, "chats")
-		files, err := os.ReadDir(chatsDir)
+	for _, homeRoot := range utils.DataHomeRoots() {
+		base := filepath.Join(homeRoot, ".gemini", "tmp")
+		entries, err := os.ReadDir(base)
 		if err != nil {
 			continue
 		}
-		for _, f := range files {
-			if !strings.HasPrefix(f.Name(), "session-") || !strings.HasSuffix(f.Name(), ".json") {
+
+		for _, entry := range entries {
+			if !entry.IsDir() {
 				continue
 			}
-			s := parseGeminiSessionFile(filepath.Join(chatsDir, f.Name()), project)
-			if s != nil {
-				sessions = append(sessions, *s)
+			project := entry.Name()
+			chatsDir := filepath.Join(base, project, "chats")
+			files, err := os.ReadDir(chatsDir)
+			if err != nil {
+				continue
+			}
+			for _, f := range files {
+				if !strings.HasPrefix(f.Name(), "session-") || !strings.HasSuffix(f.Name(), ".json") {
+					continue
+				}
+				s := parseGeminiSessionFile(filepath.Join(chatsDir, f.Name()), project)
+				if s != nil {
+					sessions = append(sessions, *s)
+				}
 			}
 		}
 	}
