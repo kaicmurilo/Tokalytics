@@ -2,8 +2,14 @@
 
 package main
 
-import "os/exec"
+import (
+	"os/exec"
+	"syscall"
+)
 
 func setDetachChild(cmd *exec.Cmd) {
-	_ = cmd
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+	}
 }

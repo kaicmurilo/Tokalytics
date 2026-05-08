@@ -70,18 +70,17 @@ func countdown(t time.Time) string {
 	}
 }
 
-// renderBar returns an ASCII progress bar, e.g. "████░░░░░░ 42%"
+// renderBar returns a block progress bar, e.g. "████████░░ 82%"
 func renderBar(pct float64) string {
 	const total = 10
-	filled := int(pct/10 + 0.5)
+	filled := int(float64(total)*pct/100 + 0.5)
 	if filled > total {
 		filled = total
 	}
 	if filled < 0 {
 		filled = 0
 	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", total-filled)
-	return fmt.Sprintf("%s %.0f%%", bar, pct)
+	return strings.Repeat("█", filled) + strings.Repeat("░", total-filled) + fmt.Sprintf(" %2.0f%%", pct)
 }
 
 // Start inicia o loop de polling
@@ -118,21 +117,14 @@ func updateTray() {
 		return
 	}
 
+	systray.SetTitle("")
 	if len(usages) == 0 {
-		stats := providers.GetTodayStats()
-		if stats.TotalTokens > 0 {
-			systray.SetTooltip("Tokalytics — sem dados de quota online")
-		} else {
-			systray.SetTooltip("Tokalytics — atualizando...")
-		}
-		systray.SetTitle("")
+		systray.SetTooltip("Tokalytics — aguardando dados...")
 		fillSlotsNoData()
 		return
 	}
 
-	systray.SetTitle("")
-	systray.SetTooltip("Clique para ver detalhes de uso")
-
+	systray.SetTooltip(buildTooltip(usages))
 	fillSlotsWithData(usages)
 }
 
@@ -145,9 +137,47 @@ func fillSlotsNoData() {
 	menuMu.Unlock()
 
 	for i := 0; i < 25; i++ {
-		setSlot(i, "")
+		setSlot(i, "  ")
 	}
-	setSlot(0, "  Sem dados — aguardando atualização...")
+	setSlot(0, "  ⏳ Aguardando dados...")
+}
+
+// worstPct returns the highest PctUsed across all windows (used for header emoji).
+func worstPct(windows []providers.RateWindow) float64 {
+	worst := 0.0
+	for _, w := range windows {
+		if w.PctUsed > worst {
+			worst = w.PctUsed
+		}
+	}
+	return worst
+}
+
+// isInfoWindow detects stat-carrying rows that need no bar (PctUsed=0, full, no reset).
+func isInfoWindow(w providers.RateWindow) bool {
+	return w.PctUsed == 0 && w.PctLeft >= 99 && w.ResetsAt.IsZero()
+}
+
+// buildTooltip composes the hover tooltip from current usages.
+func buildTooltip(usages map[string]*providers.Usage) string {
+	var parts []string
+	if u, ok := usages["claude"]; ok && u.TodayCostUSD > 0 {
+		parts = append(parts, fmt.Sprintf("Claude $%.2f hoje", u.TodayCostUSD))
+	}
+	for _, id := range []string{"cursor", "gemini", "codex"} {
+		u, ok := usages[id]
+		if !ok {
+			continue
+		}
+		w := worstPct(u.Windows)
+		if w > 0 {
+			parts = append(parts, fmt.Sprintf("%s %s %.0f%%", u.Name, barChar(w), w))
+		}
+	}
+	if len(parts) == 0 {
+		return "Tokalytics — sem dados de quota"
+	}
+	return "Tokalytics — " + strings.Join(parts, " · ")
 }
 
 func fillSlotsWithData(usages map[string]*providers.Usage) {
@@ -158,7 +188,6 @@ func fillSlotsWithData(usages map[string]*providers.Usage) {
 	}
 	menuMu.Unlock()
 
-	// Clear all slots first
 	for i := 0; i < 25; i++ {
 		setSlot(i, "  ")
 	}
@@ -171,45 +200,47 @@ func fillSlotsWithData(usages map[string]*providers.Usage) {
 		if !ok {
 			continue
 		}
+		if slot >= 22 {
+			break
+		}
 
-		// Provider header
 		plan := usage.Plan
 		if plan == "" {
 			plan = "Pro"
 		}
-		setSlot(slot, fmt.Sprintf("  ── %s · %s ──────────────────", usage.Name, plan))
+		emoji := barChar(worstPct(usage.Windows))
+		setSlot(slot, fmt.Sprintf("  %s  %s  ·  %s", emoji, usage.Name, plan))
 		slot++
 
-		// Windows
 		for _, w := range usage.Windows {
 			if slot >= 22 {
 				break
 			}
-			resetStr := ""
-			if !w.ResetsAt.IsZero() {
-				resetStr = "  · " + countdown(w.ResetsAt)
+			if isInfoWindow(w) {
+				setSlot(slot, fmt.Sprintf("  📊 %s", w.Name))
+			} else {
+				resetStr := ""
+				if !w.ResetsAt.IsZero() {
+					resetStr = "  ↺ " + countdown(w.ResetsAt)
+				}
+				setSlot(slot, fmt.Sprintf("  %s %-10s  %s%s", barChar(w.PctUsed), w.Name, renderBar(w.PctUsed), resetStr))
 			}
-			label := fmt.Sprintf("  %-8s  %s%s", w.Name, renderBar(w.PctUsed), resetStr)
-			setSlot(slot, label)
 			slot++
 		}
 
-		// Cost line for Claude
 		if id == "claude" && (usage.TodayCostUSD > 0 || usage.Last30CostUSD > 0) {
 			if slot < 22 {
-				setSlot(slot, fmt.Sprintf("  💰 $%.2f hoje  ·  $%.2f / 30d", usage.TodayCostUSD, usage.Last30CostUSD))
+				setSlot(slot, fmt.Sprintf("  💰 $%.2f hoje  ·  $%.2f/30d", usage.TodayCostUSD, usage.Last30CostUSD))
 				slot++
 			}
 		}
 
-		// Blank separator
 		if slot < 22 {
 			setSlot(slot, "  ")
 			slot++
 		}
 	}
 
-	// Fill remaining slots with blanks
 	for i := slot; i < 25; i++ {
 		setSlot(i, "  ")
 	}

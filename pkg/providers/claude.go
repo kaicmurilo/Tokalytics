@@ -96,7 +96,7 @@ func readClaudeOAuthToken() (string, error) {
 			return "", fmt.Errorf("keychain: Claude Code-credentials not found")
 		}
 		raw = strings.TrimSpace(string(out))
-	case "linux":
+	case "linux", "windows":
 		var lastErr error
 		for _, home := range utils.DataHomeRoots() {
 			p := filepath.Join(home, ".claude", ".credentials.json")
@@ -111,9 +111,9 @@ func readClaudeOAuthToken() (string, error) {
 		}
 		if raw == "" {
 			if lastErr != nil {
-				return "", fmt.Errorf("linux credentials: %v", lastErr)
+				return "", fmt.Errorf("credentials: %v", lastErr)
 			}
-			return "", fmt.Errorf("linux credentials: not found")
+			return "", fmt.Errorf("credentials: not found")
 		}
 	default:
 		return "", fmt.Errorf("unsupported OS")

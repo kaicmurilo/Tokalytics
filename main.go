@@ -24,6 +24,7 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/kaicmurilo/tokalytics/pkg/autostart"
+	"github.com/kaicmurilo/tokalytics/pkg/hud"
 	"github.com/kaicmurilo/tokalytics/pkg/instancectl"
 	"github.com/kaicmurilo/tokalytics/pkg/polling"
 	"github.com/kaicmurilo/tokalytics/pkg/providers"
@@ -35,9 +36,6 @@ import (
 
 //go:embed web/static/*
 var staticFiles embed.FS
-
-//go:embed assets/icon.png
-var iconPNG []byte
 
 // Version é definida em releases via ldflags (-X main.Version=...).
 var Version = "dev"
@@ -77,12 +75,18 @@ func listenFrom(basePort, maxAttempts int) (net.Listener, int, error) {
 }
 
 func main() {
+	// With -H windowsgui the process has no console by default; attach to the
+	// parent terminal so CLI flags (--start, --stop, etc.) can print output.
+	if len(os.Args) > 1 {
+		attachWindowsConsole()
+	}
+
 	stopF := flag.Bool("stop", false, "Encerra a instância em execução (via API local)")
 	reloadF := flag.Bool("reload", false, "Pede atualização de dados na instância em execução")
 	restartF := flag.Bool("restart", false, "Encerra a instância em execução e inicia de novo em segundo plano (com -dev não encerra; equivale a outro -start em paralelo)")
 	statusF := flag.Bool("status", false, "Mostra se há instância rodando, URL, versão da API e PID (runstate)")
 	devF := flag.Bool("dev", false, "Desenvolvimento: ignora instância já em execução e sobe outra (porta seguinte se 3456 ocupada)")
-	startF := flag.Bool("start", false, "Inicia em segundo plano (sem ocupar o terminal; sem ícone na barra de menu)")
+	startF := flag.Bool("start", false, "Inicia em segundo plano com ícone na barra de tarefas (Windows) ou headless (Linux/macOS)")
 	headlessF := flag.Bool("headless", false, "Uso interno: só HTTP + polling, sem menu bar")
 	var showVersion bool
 	flag.BoolVar(&showVersion, "version", false, "Mostra a versão deste binário e sai (-v e --v também)")
@@ -124,13 +128,15 @@ func main() {
 	}
 	if *stopF {
 		if err := cmdStop(); err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		return
 	}
 	if *reloadF {
 		if err := cmdReload(); err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		return
 	}
@@ -140,14 +146,16 @@ func main() {
 
 	if *restartF {
 		if err := cmdRestart(skipSingleton); err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		return
 	}
 
 	if *startF {
 		if err := cmdStartBackground(skipSingleton); err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 		return
 	}
@@ -250,7 +258,11 @@ func cmdStartBackground(devMode bool) error {
 	if devMode {
 		args = append(args, "-dev")
 	}
-	args = append(args, "-headless")
+	// On Windows, spawn without --headless so the systray icon appears.
+	// On Linux/macOS, keep headless to avoid requiring a display server.
+	if runtime.GOOS != "windows" {
+		args = append(args, "-headless")
+	}
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stdin = nil
 	cmd.Stdout = io.Discard
@@ -319,7 +331,7 @@ func cmdStatus() {
 }
 
 func onReady() {
-	systray.SetIcon(iconPNG)
+	systray.SetIcon(iconBytes)
 	systray.SetTitle("")
 	systray.SetTooltip("Tokalytics: Claude, Cursor, Gemini & Codex Usage")
 
@@ -336,6 +348,7 @@ func onReady() {
 	polling.SetMenuSlots(slots)
 
 	systray.AddSeparator()
+	mHUD := systray.AddMenuItem("🎨  Ver Detalhes", "Abrir painel de uso com cores")
 	mOpen := systray.AddMenuItem("📊  Abrir Dashboard", "Abrir dashboard web")
 	mRefresh := systray.AddMenuItem("🔄  Atualizar", "Atualizar quotas")
 	systray.AddSeparator()
@@ -347,6 +360,8 @@ func onReady() {
 	go func() {
 		for {
 			select {
+			case <-mHUD.ClickedCh:
+				hud.ShowHUD()
 			case <-mOpen.ClickedCh:
 				openBrowser(fmt.Sprintf("http://localhost:%d", dashboardPort()))
 			case <-mRefresh.ClickedCh:
@@ -794,8 +809,12 @@ func startHTTPServer() {
 		claudeSessions := providers.ParseClaudeSessions()
 		cursorSessions := providers.ParseCursorSessions()
 		codexSessions := providers.ParseCodexSessions()
+		geminiSessions := providers.GeminiSessionsToSessions(providers.ParseGeminiSessions())
+		cursorWinSessions := providers.ParseCursorWindowsWorkspaceSessions()
 		allSessions := append(claudeSessions, cursorSessions...)
 		allSessions = append(allSessions, codexSessions...)
+		allSessions = append(allSessions, geminiSessions...)
+		allSessions = append(allSessions, cursorWinSessions...)
 
 		// Full aggregation: daily, model, projects, top prompts, insights
 		agg := providers.Aggregate(allSessions)

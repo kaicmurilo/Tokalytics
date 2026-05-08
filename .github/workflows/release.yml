@@ -80,7 +80,7 @@ jobs:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: 1
-        run: go build -trimpath -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o ${{ matrix.asset }} .
+        run: go build -trimpath -ldflags="-s -w -H windowsgui -X main.Version=${{ github.ref_name }}" -o ${{ matrix.asset }} .
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2

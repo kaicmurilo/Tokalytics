@@ -145,3 +145,44 @@ type GeminiTodayStats struct {
 	InputTokens   int
 	OutputTokens  int
 }
+
+// GeminiSessionsToSessions converts []GeminiSession to []Session so they can
+// be included in the unified aggregation pipeline alongside Claude/Cursor/Codex.
+func GeminiSessionsToSessions(gs []GeminiSession) []Session {
+	out := make([]Session, 0, len(gs))
+	for _, g := range gs {
+		if g.TotalTokens == 0 {
+			continue
+		}
+		model := g.Model
+		if model == "" {
+			model = "gemini"
+		}
+		q := Query{
+			Model:        model,
+			InputTokens:  g.InputTokens,
+			OutputTokens: g.OutputTokens,
+			// Gemini CLI reports cached tokens; map to CacheReadTokens
+			CacheReadTokens: g.CachedTokens,
+			TotalTokens:     g.TotalTokens,
+		}
+		s := Session{
+			SessionID:    "gemini-" + g.SessionID,
+			Project:      g.Project,
+			Date:         g.Date,
+			Timestamp:    g.StartTime.UTC().Format(time.RFC3339),
+			Model:        model,
+			QueryCount:   g.Messages,
+			Queries:      []Query{q},
+			InputTokens:  g.InputTokens,
+			OutputTokens: g.OutputTokens,
+			CacheReadTokens: g.CachedTokens,
+			TotalTokens:  g.TotalTokens,
+		}
+		if s.QueryCount == 0 {
+			s.QueryCount = 1
+		}
+		out = append(out, s)
+	}
+	return out
+}

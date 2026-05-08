@@ -48,12 +48,15 @@ var profileDirs = []string{"Default", "Profile 1", "Profile 2", "Profile 3"}
 // GetChromeCookie tries all installed Chromium-based browsers.
 // macOS: uses Keychain-based AES decryption.
 // Linux: uses the "peanuts" fallback key (Chrome's default when no keyring is available).
+// Windows: uses DPAPI to decrypt the browser master key, then AES-256-GCM for cookies.
 func GetChromeCookie(domain, name string) (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		return getChromeCookieDarwin(domain, name)
 	case "linux":
 		return getChromeCookieLinux(domain, name)
+	case "windows":
+		return getChromeCookieWindows(domain, name)
 	default:
 		return "", fmt.Errorf("unsupported OS")
 	}
